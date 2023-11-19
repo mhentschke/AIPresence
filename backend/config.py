@@ -1,0 +1,2 @@
+DATA_PATH = "data"
+SAMPLE_RATE = 1

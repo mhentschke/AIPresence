@@ -1,4 +1,5 @@
 from homeassistant_api import Client
+from homeassistant_api.errors import EndpointNotFoundError
 from flask import Flask, request
 import uuid
 import api_schemas
@@ -49,12 +50,17 @@ with Client(
 
     @app.route("/trackers/<entity_id>", methods=['POST', 'PUT'])
     def create_tracker(entity_id):
-        model = None
+        mobile = request.json["mobile"] if "mobile" in request.json else False
+        whitelist = request.json["whitelist"] if "whitelist" in request.json else False
+        blacklist = request.json["blacklist"] if "blacklist" in request.json else False
         if request.method == 'POST':
             if entity_id in trackers:
                 return ("Already exists. To overwrite, please use the PUT method", 409)
-
-        trackers[entity_id] = Smartphone_Tracker(entity_id, ha_client=client)
+            mobile = request.json["mobile"] if "mobile" in request.json else False
+        else:
+            if entity_id not in trackers:
+                return ("Entity not found", 404)    
+        trackers[entity_id] = Smartphone_Tracker(entity_id, ha_client=client, mobile = mobile, whitelist = whitelist, blacklist = blacklist)
         storage.save_object(trackers, "trackers.json", storage.Trackers_Schema())
         return ("Success")
 
@@ -208,6 +214,14 @@ with Client(
     @app.route("/rooms", methods=["GET"])
     def get_rooms():
         return(stringify_dict_items(rooms, api_schemas.Room_Schema()), 200)
+    
+    @app.route("/device/check_entity_id/<entity_id>", methods=["GET"])
+    def check_entity_id(entity_id):
+        try:
+            client.get_entity(entity_id=entity_id)
+            return ("Success")
+        except EndpointNotFoundError:
+            return ("Entity not found", 404)
 
 
 

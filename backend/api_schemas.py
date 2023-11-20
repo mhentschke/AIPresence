@@ -30,6 +30,8 @@ class Binary_Sensor_Schema(Sensor_Schema):
         return Binary_Sensor(**data)
     
 class Smartphone_Tracker_Schema(Sensor_Schema):
+    whitelist = fields.Bool()
+    blacklist = fields.Bool()
     
     @post_load
     def make_smartphone_tracker(self, data, **kwargs):

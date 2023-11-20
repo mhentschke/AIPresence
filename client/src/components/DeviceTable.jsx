@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import DeviceEditModal from './DeviceEditModal';
 
 
-const DeviceTable = ({ data, deviceEditModal }) => {
+const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, backend, forceUpdate}) => {
   const [expandedRow, setExpandedRow] = useState(null);
 
   const toggleRow = (rowIndex) => {
@@ -17,7 +16,7 @@ const DeviceTable = ({ data, deviceEditModal }) => {
     <table class="w3-table-all w3-hoverable">
       <thead>
         <tr>
-          <th>Entity_id</th>
+          <th>Identifier</th>
           <th>Name</th>
           <th>Trained</th>
           <th>Accuracy</th>
@@ -28,7 +27,7 @@ const DeviceTable = ({ data, deviceEditModal }) => {
         {data.map((device, index) => (
           <React.Fragment key={device.entity_id}>
             <tr>
-              <td>{device.entity_id}</td>
+              <td>{device.type + ": " + device.identifier}</td>
               <td>{device.name}</td>
               <td>{device.trained}</td>
               <td>{device.accuracy}</td>
@@ -38,26 +37,20 @@ const DeviceTable = ({ data, deviceEditModal }) => {
                     // Open Edit Modal
                     //toggleModal();
                     deviceEditModal(true);
+                    deviceSelector(index);
+                    console.log(data[index]);
                   }
                   }>Edit</button>
-              </td>
-              <td>
                 <button onClick={() => {
-                  console.log(index);
-                  // call delete api at /devices/data[index]['id']
-                  // then update the table
-                  fetch('/devices/' + data[index]['id'], {
-                    method: 'DELETE',
-                    headers: {
-                      'Content-Type': 'application/json'
-                    },
-                  }) // check if successful
-                  .then(response => alert("response. status: " + response.status))
-                }
-              }>Remove</button>
-              </td>
-              <td>
+                  backend.RemoveDevice(data[index]);
+                  var newData = JSON.parse(JSON.stringify(data));
+                  newData.splice(index, 1);
+                  setData(newData);
+                  forceUpdate();
+                  }
+                }>Remove</button>
                 <button onClick={() => console.log(index)}>Start Training</button>
+                <button onClick={() => console.log(index)}>Download Model</button>
               </td>
             </tr>
           </React.Fragment>

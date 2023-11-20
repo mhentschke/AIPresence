@@ -208,6 +208,10 @@ class Binary_Sensor(Sensor):
 
 
 class Smartphone_Tracker(Sensor):
+    def __init__(self, entity_id, ha_client = None, mobile = False, whitelist = False, blacklist = False):
+        super().__init__(entity_id, ha_client, mobile)
+        self.whitelist = whitelist
+        self.blacklist = blacklist
     def parse_state(self, state):
         # drop keys from state.attributes that match the regex sensor\..*\-icon
         attr = {k: v for k, v in state.attributes.items() if not re.match("icon", k)}

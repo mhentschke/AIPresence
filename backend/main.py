@@ -6,6 +6,7 @@ import api_schemas
 import storage
 from classes import *
 from marshmallow import ValidationError
+import json
 
 app = Flask(__name__)
 
@@ -64,6 +65,15 @@ with Client(
         storage.save_object(trackers, "trackers.json", storage.Trackers_Schema())
         return ("Success")
 
+    @app.route("/trackers/<entity_id>", methods=['DELETE'])
+    def delete_tracker(entity_id):
+        if entity_id in trackers:
+            del trackers[entity_id]
+            storage.save_object(trackers, "trackers.json", storage.Trackers_Schema())
+            return ("Success")
+        else:
+            return ("Entity not found", 404)
+    
     @app.route("/sensors")
     def get_sensors():
         return (stringify_dict_items(sensors, api_schemas.Binary_Sensor_Schema()), 200)
@@ -81,14 +91,37 @@ with Client(
     def get_devices():
         return (stringify_dict_items(devices, api_schemas.Device_Schema()), 200)
     
+    @app.route("/devices/<device_id>/location", methods = ['GET'])
+    def get_device_location(device_id):
+        if device_id in devices:
+            loc = devices[device_id].get_location()
+            if loc is None:
+                return ("Device is not trained", 400)
+            else:
+                #print("loc", loc)
+                return (loc, 200)
+        else:
+            return ("Device not found", 404)
+        
+    @app.route("/devices/location", methods = ['GET'])
+    def get_devices_location():
+        device_locations = {}
+        for device_id, device in devices.items():
+            response_dict = device.get_location()
+            device_locations[device_id] = response_dict
+        return (device_locations, 200)
+
+
+    
     def create_or_update_device(device_id, request, model = None):
         if "entity_id" in request.json:
-            devices[device_id] = Device(request.json["name"], entity_id=request.json["entity_id"], model = model)
+            devices[device_id] = Device(request.json["name"], entity_id=request.json["entity_id"], model = model, data_gatherer = get_data_from_trackers_and_sensors)
         elif "beacon_id" in request.json:
-            devices[device_id] = Device(request.json["name"], beacon_id=request.json["beacon_id"], model = model)
+            devices[device_id] = Device(request.json["name"], beacon_id=request.json["beacon_id"], model = model, data_gatherer = get_data_from_trackers_and_sensors)
         else:
             raise ValueError("Exactly one of entity_id or beacon_id must be specified")
         storage.save_object(devices, "devices.json", storage.Devices_Schema())
+        return ("Success")
 
     @app.route("/devices", methods=['POST'])
     def create_device():
@@ -128,11 +161,14 @@ with Client(
 
     @app.route("/devices/<device_id>/model/start_training", methods=["POST"])
     def start_training(device_id):
-        print(devices)
-        print(devices[device_id])
         try:
             room = request.json["room"]
-            devices[device_id].start_training(room)
+            append = request.json["append"] if "append" in request.json else False
+            if device_id not in devices:
+                return ("Device not found", 404)
+            if room not in rooms:
+                return ("Room not found", 404)
+            devices[device_id].start_training(room, append = append)
             return ("Success")
         except KeyError as e:
             return (str(e), 400)
@@ -150,14 +186,17 @@ with Client(
     def retrain(device_id):
         if not devices[device_id].training:
             devices[device_id].retrain()
+            return ("Success")
         else:
             return ("Device is already training", 400)
     
     @app.route("/devices/<device_id>/model/cancel_training")
     def cancel_training(device_id):
         if devices[device_id].training:
-            devices[device_id].stop_training()
-            devices[device_id].rollback_training()
+            devices[device_id].cancel_training()
+            return ("Success")
+        else:
+            return ("Device is not training", 400)
 
     @app.route("/devices/<device_id>/model/set_room/<room_id>", methods=["POST"])
     def set_room(device_id, room_id):
@@ -175,19 +214,34 @@ with Client(
     
     @app.route("/devices/<device_id>/model" , methods=["GET"])
     def get_model(device_id):
-        devices[device_id].model.get_info()
+        return devices[device_id].model.get_info()
+    
+    @app.route("/devices/<device_id>/model/training_progress" , methods=["GET"])
+    def get_training_progress(device_id):
+        if device_id in devices:
+            progress = devices[device_id].model.get_training_progress()
+            if progress == {}: # model is not training
+                return ("Device is not training", 400)
+            else:
+                encoded_progress = json.dumps(progress)
+                print (encoded_progress)
+                return(encoded_progress, 200)
+        else:
+            return ("Device not found", 404)
 
     @app.route("/rooms/<room_id>", methods=["PUT", "DELETE"])
     def add_delete_room(room_id):
         if request.method == "PUT":
             name = request.json["name"]
             color = request.json["color"]
-            rooms[room_id] = Room(name, color)
+            rooms[room_id] = Room(room_id, name, color)
             storage.save_object(rooms, "rooms.json", storage.Rooms_Schema())
+            return ("Success")
         else:
             if room_id in rooms:
-                rooms.remove(room_id)
-                storage.save_object(rooms, storage.Rooms_Schema())
+                del rooms[room_id]
+                storage.save_object(rooms, "rooms.json", storage.Rooms_Schema())
+                return ("Success")
             else:
                 return("Room not found", 404)
     
@@ -204,7 +258,7 @@ with Client(
         try:
             name = request.json["name"]
             color = request.json["color"]
-            rooms[room_id] = Room(name, color)
+            rooms[room_id] = Room(room_id, name, color)
             storage.save_object(rooms, "rooms.json", storage.Rooms_Schema())
             return (room_id)
         except KeyError as e:
@@ -238,6 +292,7 @@ with Client(
             devices = storage.load_object("devices.json", storage.Devices_Schema())
             for device in devices.values():
                 device.data_gatherer = get_data_from_trackers_and_sensors
+                device.model.data_gatherer = get_data_from_trackers_and_sensors
         except FileNotFoundError as e:
             print("Devices file not found, {}, starting from scratch".format(e))
         except ValidationError as e:

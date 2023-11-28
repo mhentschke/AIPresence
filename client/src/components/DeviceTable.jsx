@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 
-const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, backend, forceUpdate}) => {
+const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, deviceTrainModal, backend, forceUpdate}) => {
   const [expandedRow, setExpandedRow] = useState(null);
 
   const toggleRow = (rowIndex) => {
@@ -20,6 +20,8 @@ const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, backend, 
           <th>Name</th>
           <th>Trained</th>
           <th>Accuracy</th>
+          <th>Location</th>
+          <th>Confidence</th>
           <th>Options</th>
         </tr>
       </thead>
@@ -31,6 +33,8 @@ const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, backend, 
               <td>{device.name}</td>
               <td>{device.trained}</td>
               <td>{device.accuracy}</td>
+              <td>{device.location}</td>
+              <td>{device.confidence}</td>
               <td>
                 <button onClick={() => {
                     console.log(data[index]);  
@@ -49,7 +53,13 @@ const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, backend, 
                   forceUpdate();
                   }
                 }>Remove</button>
-                <button onClick={() => console.log(index)}>Start Training</button>
+                <button onClick={() => {
+                    // Open Training Modal
+                    deviceTrainModal(true);
+                    deviceSelector(index);
+                    console.log(data[index]);
+                  }
+                }>Start Training</button>
                 <button onClick={() => console.log(index)}>Download Model</button>
               </td>
             </tr>

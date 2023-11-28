@@ -28,6 +28,11 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                         setEntityIDValid(true);
                         backend.CreateDevice(device);
                         updatedData.push(device);
+                        var tracker = {
+                            entity_id: entityId,
+                            mobile: true,
+                        }
+                        backend.CreateTracker(tracker);
                         toggleModal();
                         setData(updatedData);
                         forceUpdate();

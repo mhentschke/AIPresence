@@ -65,7 +65,7 @@ const TrackerTable = ({ data, setData, trackerEditModal, trackerSelector, backen
               </td>
               <td>
                 <button onClick={() => {
-                  backend.Removetracker(data[index]);
+                  backend.RemoveTracker(data[index]);
                   var newData = JSON.parse(JSON.stringify(data));
                   newData.splice(index, 1);
                   setData(newData);

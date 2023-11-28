@@ -13,6 +13,7 @@ class Model_Stats_Schema(Schema):
 class Model_Schema(Schema):
     trained_model_stats = fields.Nested(Model_Stats_Schema)
     data_path = fields.Str()
+    trained_columns = fields.List(fields.Str())
 
     @post_load
     def make_model(self, data, **kwargs):
@@ -24,6 +25,7 @@ class Model_Schema(Schema):
                      data = pd.read_csv(data_filepath), 
                      trained_model = pickle.load(open(model_filepath, 'rb')),
                      trained_model_stats=data['trained_model_stats'], scaler = pickle.load(open(scaler_filepath, 'rb')),
+                     trained_columns = data['trained_columns']
                      )
     
     @pre_dump
@@ -36,7 +38,7 @@ class Model_Schema(Schema):
         data_filepath = Model.get_data_filepath(data_path)
         model_filepath = Model.get_model_filepath(data_path)
         scaler_filepath = Model.get_scaler_filepath(data_path)
-        model.data.to_csv(data_filepath)
+        model.data.to_csv(data_filepath, index=False)
         pickle.dump(model.trained_model, open(model_filepath, 'wb'))
         pickle.dump(model.scaler, open(scaler_filepath, 'wb'))
         #data = {'data_path': model.data_path, 'trained_model_stats': model.trained_model_stats}
@@ -84,8 +86,9 @@ class Smartphone_Tracker_Schema(Sensor_Schema):
         return Smartphone_Tracker(**data)
 
 class Room_Schema(Schema):
+    id = fields.Str()
     name = fields.Str()
-    color = fields.List(fields.Int())
+    color = fields.Str()
     
 class Trackers_Schema(Schema):
     trackers = fields.Dict(keys = fields.Str(), values = fields.Nested(Smartphone_Tracker_Schema))

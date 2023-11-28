@@ -38,6 +38,8 @@ class Smartphone_Tracker_Schema(Sensor_Schema):
         return Smartphone_Tracker(**data)
 
 class Room_Schema(Schema):
+    id = fields.Str()
     name = fields.Str()
-    color = fields.List(fields.Int())
+    color = fields.Str()
+
     

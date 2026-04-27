@@ -122,11 +122,11 @@ class Model(object):
         # drop columns [room, Unnamed: 0]
         if "room" in df.columns:
             df.drop(["room"], axis=1, inplace=True)
-        df.fillna(df.max(), downcast='infer', inplace = True)
+        df.fillna(df.max(), inplace = True)
         return df
 
     def data_prep(self, df):
-        df.fillna(df.max(), downcast='infer', inplace = True)
+        df.fillna(df.max(), inplace = True)
         g = df.groupby('room')
         df_resampled = g.apply(lambda x: x.sample(g.size().min()).reset_index(drop=True))
         room_encoded = pd.get_dummies(df_resampled['room'], prefix='room')
@@ -228,10 +228,8 @@ class Device(object):
             raise ValueError("Either entity_id or beacon_id must be specified")
         elif beacon_id is not None and entity_id is not None:
             raise ValueError("Only one of entity_id or beacon_id can be specified")
-        elif entity_id is not None:
-            self.entity_id = entity_id
-        else:
-            self.beacon_id = beacon_id
+        self.entity_id = entity_id
+        self.beacon_id = beacon_id
         
         self.name = name
         self.model = model
@@ -239,8 +237,8 @@ class Device(object):
         self.data_gatherer = data_gatherer
     
     def __repr__(self):
-        id = self.entity_id if self.entity_id is not None else self.beacon_
-        return ("Device(name={}, id={}, model={})".format(self.name, id, self.model))
+        identifier = self.entity_id if self.entity_id is not None else self.beacon_id
+        return ("Device(name={}, id={}, model={})".format(self.name, identifier, self.model))
 
     def start_training(self, room, append = False):
         self.training = True

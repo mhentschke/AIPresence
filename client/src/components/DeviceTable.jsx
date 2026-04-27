@@ -13,7 +13,7 @@ const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, deviceTra
   };
 
   return (
-    <table class="w3-table-all w3-hoverable">
+    <table className="w3-table-all w3-hoverable">
       <thead>
         <tr>
           <th>Identifier</th>
@@ -47,7 +47,7 @@ const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, deviceTra
                   }>Edit</button>
                 <button onClick={() => {
                   backend.RemoveDevice(data[index]);
-                  var newData = JSON.parse(JSON.stringify(data));
+                  const newData = JSON.parse(JSON.stringify(data));
                   newData.splice(index, 1);
                   setData(newData);
                   forceUpdate();

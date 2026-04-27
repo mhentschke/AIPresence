@@ -13,7 +13,7 @@ const SensorTable = ({ data, setData, sensorEditModal, sensorSelector, backend, 
   };
 
   return (
-    <table class="w3-table-all w3-hoverable">
+    <table className="w3-table-all w3-hoverable">
       <thead>
         <tr>
           <th>Entity_id</th>
@@ -29,7 +29,7 @@ const SensorTable = ({ data, setData, sensorEditModal, sensorSelector, backend, 
               <td>
                 <input type="checkbox" id="sensor_mobile" name="sensor_mobile" defaultChecked={sensor.mobile} onChange={
                   () => {
-                    var newData = JSON.parse(JSON.stringify(data));
+                    const newData = JSON.parse(JSON.stringify(data));
                     newData[index].mobile = !newData[index].mobile;
                     setData(newData);
                     backend.UpdateSensor(newData[index]);
@@ -41,7 +41,7 @@ const SensorTable = ({ data, setData, sensorEditModal, sensorSelector, backend, 
               <td>
                 <button onClick={() => {
                   backend.RemoveSensor(data[index]);
-                  var newData = JSON.parse(JSON.stringify(data));
+                  const newData = JSON.parse(JSON.stringify(data));
                   newData.splice(index, 1);
                   setData(newData);
                   forceUpdate();

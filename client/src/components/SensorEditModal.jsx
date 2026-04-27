@@ -15,9 +15,9 @@ const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend,
     const [entityIDValid, setEntityIDValid] = useState(false);
 
     const handleSave = () => {
-        var sensor = {};
-        var updatedData = JSON.parse(JSON.stringify(data));
-        if(sensorCursor == -1){ // Creating
+        let sensor = {};
+        const updatedData = JSON.parse(JSON.stringify(data));
+        if(sensorCursor === -1){ // Creating
             backend.CheckEntityId(entityId).then((result) => {
                 if(result){
                     sensor.entity_id = entityId;

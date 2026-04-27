@@ -13,7 +13,7 @@ const RoomTable = ({ data, setData, roomEditModal, roomSelector, backend, forceU
   };
 
   return (
-    <table class="w3-table-all w3-hoverable">
+    <table className="w3-table-all w3-hoverable">
       <thead>
         <tr>
           <th>Name</th>
@@ -29,7 +29,7 @@ const RoomTable = ({ data, setData, roomEditModal, roomSelector, backend, forceU
               <td>
                 <input type="color" id="room_color" name="room_color" value={room.color} onChange={
                   (e) => {
-                    var newData = JSON.parse(JSON.stringify(data));
+                    const newData = JSON.parse(JSON.stringify(data));
                     newData[index].color = e.target.value;
                     setData(newData);
                     backend.UpdateRoom(newData[index]);
@@ -48,7 +48,7 @@ const RoomTable = ({ data, setData, roomEditModal, roomSelector, backend, forceU
                   }>Edit</button>
                 <button onClick={() => {
                   backend.RemoveRoom(data[index]);
-                  var newData = JSON.parse(JSON.stringify(data));
+                  const newData = JSON.parse(JSON.stringify(data));
                   newData.splice(index, 1);
                   setData(newData);
                   forceUpdate();

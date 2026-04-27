@@ -14,9 +14,9 @@ const RoomEditModal = ({data, setData, modal, setModal, roomCursor, backend, for
     const [color, setColor] = useState("#ffffff");
 
     const handleSave = () => {
-        var room = {};
-        var updatedData = JSON.parse(JSON.stringify(data));
-        if(roomCursor == -1){ // Creating
+        const room = {};
+        const updatedData = JSON.parse(JSON.stringify(data));
+        if(roomCursor === -1){ // Creating
             room.name = name;
             room.color = color;
             backend.CreateRoom(room);

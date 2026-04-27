@@ -17,10 +17,10 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
     const [type, setType] = useState("Tracker");
 
     const handleSave = () => {
-        var device = {};
-        var updatedData = JSON.parse(JSON.stringify(data));
-        if(deviceCursor == -1){ // Creating
-            if (type == "Tracker"){
+        let device = {};
+        const updatedData = JSON.parse(JSON.stringify(data));
+        if(deviceCursor === -1){ // Creating
+            if (type === "Tracker"){
                 backend.CheckEntityId(entityId).then((result) => {
                     if(result){
                         device.entity_id = entityId;
@@ -28,7 +28,7 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                         setEntityIDValid(true);
                         backend.CreateDevice(device);
                         updatedData.push(device);
-                        var tracker = {
+                        const tracker = {
                             entity_id: entityId,
                             mobile: true,
                         }
@@ -43,7 +43,7 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                     }
                 });
             }
-            else if (type == "Beacon"){
+            else if (type === "Beacon"){
                 device.beacon_id = entityId;
                 device.name = name;
                 backend.CreateDevice(device);
@@ -55,7 +55,7 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
             
         }
         else{ // Updating
-            if (type == "Tracker"){
+            if (type === "Tracker"){
                 backend.CheckEntityId(entityId).then((result) => {
                     if(result){
                         setEntityIDValid(true);
@@ -77,7 +77,7 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                     }
                 });
             }
-            else if (type == "Beacon"){
+            else if (type === "Beacon"){
                 device = data[deviceCursor]
                 device.beacon_id = entityId;
                 device.name = name; 
@@ -105,13 +105,13 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                     onChange={
                         (e) => {
                             setEntityId(e.target.value);
-                            if (type == "Tracker")
+                            if (type === "Tracker")
                             {
                                 backend.CheckEntityId(e.target.value).then((result) => {
                                     setEntityIDValid(result);
                                 });
                             }
-                            else if (type == "Beacon")
+                            else if (type === "Beacon")
                             {
                                 setEntityIDValid(true);
                             }
@@ -136,8 +136,8 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                                         setEntityIDValid(result);
                                     });
                                 }
-                            } defaultChecked={(deviceCursor >= 0)?(data[deviceCursor].type == "Tracker"):false} checked={type=="Tracker"}/>
-                            <label for="Tracker">Tracker</label><br/>
+                            } defaultChecked={(deviceCursor >= 0)?(data[deviceCursor].type === "Tracker"):false} checked={type==="Tracker"}/>
+                            <label htmlFor="Tracker">Tracker</label><br/>
                         </div>
                         <div>
                             <input type="radio" id="Beacon" name="type" value="Beacon" onChange={
@@ -145,8 +145,8 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                                     setType(e.target.value);
                                     setEntityIDValid(true);
                                 }
-                            } defaultChecked={(deviceCursor >= 0)?(data[deviceCursor].type == "Beacon"):false} checked={type=="Beacon"}/>
-                            <label for="Beacon">Beacon</label><br/>
+                            } defaultChecked={(deviceCursor >= 0)?(data[deviceCursor].type === "Beacon"):false} checked={type==="Beacon"}/>
+                            <label htmlFor="Beacon">Beacon</label><br/>
                         </div>
                     </fieldset>
                 </p>

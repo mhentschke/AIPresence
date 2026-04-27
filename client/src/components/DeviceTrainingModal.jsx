@@ -37,10 +37,10 @@ const DeviceTrainingModal = ({ devices, setDevices, rooms, setRooms, modal, setM
 
     const updateRoomTrainingProgress = (id) => {
         backend.GetTrainingProgress(devices[deviceCursor].id).then((result) => {
-            var res = result
+            const res = result
             console.log("Training Progress: ", res);
             console.log("RoomId:", id)
-            if (res != null){
+            if (res !== null){
                 if(id in res){
                     setRoomTrainingProgress(res[id]["percentage"]*100);
                     setRoomTrainingSamples(res[id]["count"]);

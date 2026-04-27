@@ -16,9 +16,9 @@ const TrackerEditModal = ({data, setData, modal, setModal, trackerCursor, backen
     const [entityIDValid, setEntityIDValid] = useState(false);
 
     const handleSave = () => {
-        var tracker = {};
-        var updatedData = JSON.parse(JSON.stringify(data));
-        if(trackerCursor == -1){ // Creating
+        let tracker = {};
+        const updatedData = JSON.parse(JSON.stringify(data));
+        if(trackerCursor === -1){ // Creating
             backend.CheckEntityId(entityId).then((result) => {
                 if(result){
                     tracker.entity_id = entityId;

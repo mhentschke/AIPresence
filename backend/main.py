@@ -37,9 +37,7 @@ async def lifespan(app: FastAPI):
     app.state.rooms = {}
 
     try:
-        app.state.trackers = storage.load_object(
-            "trackers.json", storage.Trackers_Schema()
-        )
+        app.state.trackers = storage.load_trackers()
         for tracker in app.state.trackers.values():
             tracker.ha_client = client
     except FileNotFoundError:
@@ -48,9 +46,7 @@ async def lifespan(app: FastAPI):
         logger.exception("Error loading trackers, starting from scratch")
 
     try:
-        app.state.sensors = storage.load_object(
-            "sensors.json", storage.Sensors_Schema()
-        )
+        app.state.sensors = storage.load_sensors()
         for sensor in app.state.sensors.values():
             sensor.ha_client = client
     except FileNotFoundError:
@@ -73,9 +69,7 @@ async def lifespan(app: FastAPI):
         return data
 
     try:
-        app.state.devices = storage.load_object(
-            "devices.json", storage.Devices_Schema()
-        )
+        app.state.devices = storage.load_devices(data_gatherer=data_gatherer)
         for device in app.state.devices.values():
             device.data_gatherer = data_gatherer
             if device.model is not None:
@@ -86,7 +80,7 @@ async def lifespan(app: FastAPI):
         logger.exception("Error loading devices, starting from scratch")
 
     try:
-        app.state.rooms = storage.load_object("rooms.json", storage.Rooms_Schema())
+        app.state.rooms = storage.load_rooms()
     except FileNotFoundError:
         logger.info("Rooms file not found, starting from scratch")
     except Exception:

@@ -1,6 +1,10 @@
 __pycache__
 *.pyc
 data/*
+.env
+backend/.env
+.venv
+backend/.venv
 
 client/node_modules
 client/.pnp

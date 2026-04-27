@@ -2,11 +2,18 @@ from homeassistant_api import Client
 from homeassistant_api.errors import EndpointNotFoundError
 from flask import Flask, request
 import uuid
+import os
 import api_schemas
 import storage
 from classes import *
 from marshmallow import ValidationError
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
+
+HA_URL = os.environ["HA_URL"]
+HA_TOKEN = os.environ["HA_TOKEN"]
 
 app = Flask(__name__)
 
@@ -39,8 +46,8 @@ def stringify_dict_items(dict, schema):
 
 
 with Client(
-    'REDACTED_HA_URL',
-    'REDACTED_TOKEN',
+    HA_URL,
+    HA_TOKEN,
     cache_session = False
 ) as client:
     

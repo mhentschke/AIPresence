@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install ruff
+      - run: ruff check backend/
+
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Create venv and install dependencies
+        run: |
+          python -m venv backend/.venv
+          source backend/.venv/bin/activate
+          pip install fastapi uvicorn[standard] pydantic python-dotenv homeassistant_api scikit-learn pandas pytest httpx
+      - name: Run tests
+        run: |
+          source backend/.venv/bin/activate
+          pytest backend/tests/ -v
+
+  lint-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - run: npm ci
+        working-directory: client
+      - run: npx eslint src/
+        working-directory: client
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - run: npm ci
+        working-directory: client
+      - run: npx react-scripts test --watchAll=false
+        working-directory: client
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - run: npm ci
+        working-directory: client
+      - run: npm run build
+        working-directory: client

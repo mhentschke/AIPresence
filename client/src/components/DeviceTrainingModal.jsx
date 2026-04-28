@@ -1,153 +1,162 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import "./Modal.css"
 
-let interval = undefined;
+const DeviceTrainingModal = ({ devices, setDevices, rooms, modal, setModal, deviceCursor, backend, getElementFromId }) => {
 
-const DeviceTrainingModal = ({ devices, setDevices, rooms, setRooms, modal, setModal, deviceCursor, backend, forceUpdate, getElementFromId }) => {
-
-    const toggleModal = () => {
-        setModal(!modal)
-    };
-    const [training_overwrite, setTrainingOverwrite] = useState(false);
+    const [trainingOverwrite, setTrainingOverwrite] = useState(false);
     const [roomTrainingProgress, setRoomTrainingProgress] = useState(0);
     const [roomTrainingSamples, setRoomTrainingSamples] = useState(0);
     const [training, setTraining] = useState(false);
-    const [roomId, setRoomId] = useState("Not Training");
-    //var roomId = "Not Training";
-    const [roomIndex, setRoomIndex] = useState(0);
-    const [roomChanged, setRoomChanged] = useState(false);
+    const [roomIndex, setRoomIndex] = useState(-1);
 
+    const intervalRef = useRef(null);
+    const currentRoomIdRef = useRef(null);
 
-    const handleRoomButtonClick = (id, index) => {
-        if (!training){
+    // Reset all training state when modal opens
+    useEffect(() => {
+        if (modal) {
+            setTraining(false);
+            setTrainingOverwrite(false);
+            setRoomTrainingProgress(0);
+            setRoomTrainingSamples(0);
+            setRoomIndex(-1);
+            currentRoomIdRef.current = null;
+        }
+    }, [modal]);
+
+    const clearPollingInterval = useCallback(() => {
+        if (intervalRef.current !== null) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+    }, []);
+
+    const pollProgress = useCallback((deviceId) => {
+        backend.GetTrainingProgress(deviceId).then((result) => {
+            const rid = currentRoomIdRef.current;
+            if (result !== null && rid && rid in result) {
+                setRoomTrainingProgress(result[rid]["percentage"] * 100);
+                setRoomTrainingSamples(result[rid]["count"]);
+            } else {
+                setRoomTrainingProgress(0);
+                setRoomTrainingSamples(0);
+            }
+        }).catch(() => {
+            // Ignore polling errors silently
+        });
+    }, [backend]);
+
+    const startPolling = useCallback((deviceId) => {
+        clearPollingInterval();
+        intervalRef.current = setInterval(() => {
+            pollProgress(deviceId);
+        }, 1000);
+    }, [clearPollingInterval, pollProgress]);
+
+    // Clean up interval when modal closes or component unmounts
+    useEffect(() => {
+        if (!modal) {
+            clearPollingInterval();
+        }
+        return () => {
+            clearPollingInterval();
+        };
+    }, [modal, clearPollingInterval]);
+
+    const handleRoomButtonClick = async (roomId, index) => {
+        const deviceId = devices[deviceCursor].id;
+
+        if (!training) {
             setTraining(true);
-            backend.StartTraining(devices[deviceCursor].id, id, training_overwrite);
+            await backend.StartTraining(deviceId, roomId, trainingOverwrite);
+        } else {
+            await backend.ChangeRoom(deviceId, roomId);
         }
-        else{
-            backend.ChangeRoom(devices[deviceCursor].id, id);            
-        }
-        setRoomChanged(true);
-        setRoomId(id);
-        //roomId = id;
+
+        currentRoomIdRef.current = roomId;
         setRoomIndex(index);
-        console.log("id:", id, "Room ID:", roomId, "Device:", devices[deviceCursor].name, "Index:", roomIndex);
-        updateRoomTrainingProgress(id);
+
+        // Immediately poll once, then start interval
+        pollProgress(deviceId);
+        startPolling(deviceId);
     };
 
-    const updateRoomTrainingProgress = (id) => {
-        backend.GetTrainingProgress(devices[deviceCursor].id).then((result) => {
-            const res = result
-            console.log("Training Progress: ", res);
-            console.log("RoomId:", id)
-            if (res !== null){
-                if(id in res){
-                    setRoomTrainingProgress(res[id]["percentage"]*100);
-                    setRoomTrainingSamples(res[id]["count"]);
-                }
-                else{
-                    setRoomTrainingProgress(0);
-                }
+    const handleDone = async () => {
+        if (training) {
+            try {
+                await backend.StopTraining(devices[deviceCursor].id);
+                // Refresh device list to get updated model stats
+                const updatedDevices = await backend.GetDevices();
+                setDevices(updatedDevices);
+            } catch (e) {
+                alert("Error stopping training: " + e.message);
             }
-            else{
-                setRoomTrainingProgress(0);
-            }
-            
-        });
-    }
-    
-
-    useEffect(() => {
-        console.log("Hook Called. Training:", training, "Modal:", modal);
-        if (roomChanged){
-            setRoomChanged(false);
-            console.log("Room Changed:", roomChanged);
-            clearInterval(interval);
-            interval = undefined;
-
+            setTraining(false);
         }
-        else{
-            if (training && modal){
-                interval = setInterval(() => {
-                    if (training && modal){
-                        console.log("Updating Training Progress. Training:", training, "Modal:", modal, "RoomId:", roomId);
-                        updateRoomTrainingProgress(roomId);
-                    }
-                    else{
-                        console.log("Skipping Update")
-                    }
-                }, 1000);
+        clearPollingInterval();
+        setModal(false);
+    };
+
+    const handleCancel = async () => {
+        if (training) {
+            try {
+                await backend.CancelTraining(devices[deviceCursor].id);
+            } catch (e) {
+                // Ignore cancel errors
             }
-            else{
-                console.log("Clearing Interval:", interval, "Training:", training, "Modal:", modal);
-                clearInterval(interval);
-                interval = undefined;
-                console.log("Cleared Interval:", interval, "Training:", training, "Modal:", modal)
-            }
+            setTraining(false);
         }
-    }, [training, modal, roomChanged]);
-
-
-
+        clearPollingInterval();
+        setModal(false);
+    };
 
     return (
         <>
-            {modal && (<div className='modal'>
-                <div onClick={toggleModal}className="overlay"></div>
+            {modal && (
+                <div className='modal'>
+                    <div onClick={handleCancel} className="overlay"></div>
                     <div className="modal-content">
                         <h2>Device Training</h2>
-                        <p>Chose a room to start!</p>
+                        <p>Choose a room to start!</p>
                         <p></p>
-                        <input type="checkbox" id="training_overwrite" name="training_overwrite" defaultChecked={training_overwrite} onChange={
-                            (e) => {
-                               setTrainingOverwrite(e.target.checked); 
-                            }
-                        }></input>
-                        <label>Overwrite Training</label>
+                        <input
+                            type="checkbox"
+                            id="training_overwrite"
+                            name="training_overwrite"
+                            checked={trainingOverwrite}
+                            onChange={(e) => setTrainingOverwrite(e.target.checked)}
+                        />
+                        <label htmlFor="training_overwrite">Overwrite Training</label>
                         <div className="button-grid-rooms">
                             {rooms.map((room, index) => (
-                                <button key={room.id} onClick={() => handleRoomButtonClick(room.id, index)} style={{backgroundColor : room.color}}>
+                                <button
+                                    key={room.id}
+                                    onClick={() => handleRoomButtonClick(room.id, index)}
+                                    style={{ backgroundColor: room.color }}
+                                >
                                     {room.name}
                                 </button>
                             ))}
                         </div>
                         {training && (
-                        <>
-                            <div>
-                                <progress id="training_progress" value={roomTrainingProgress} max="100"></progress>
-                            </div>
-                            <div>
-                                <p>Training Progress: {roomTrainingProgress}% - {roomTrainingSamples} samples</p>
-                            </div>
-                            <div>
-                                <p>Current Room: {roomId!==0?rooms[roomIndex].name:"Not Training"}</p>
-                            </div>
-                            <div>
-                                <p>Old Model Prediction: {roomId!==0?getElementFromId(rooms, "id", roomId).name:"Not Training"}</p>
-                            </div>
-                        </>
+                            <>
+                                <div>
+                                    <progress id="training_progress" value={roomTrainingProgress} max="100"></progress>
+                                </div>
+                                <div>
+                                    <p>Training Progress: {roomTrainingProgress.toFixed(0)}% - {roomTrainingSamples} samples</p>
+                                </div>
+                                <div>
+                                    <p>Current Room: {roomIndex >= 0 ? rooms[roomIndex].name : "Not Training"}</p>
+                                </div>
+                                <div>
+                                    <p>Old Model Prediction: {currentRoomIdRef.current ? (() => { const el = getElementFromId(rooms, "id", currentRoomIdRef.current); return el !== -1 ? el.name : "-"; })() : "Not Training"}</p>
+                                </div>
+                            </>
                         )}
                         <div>
-                            <button onClick={() => {
-                                if (training){
-                                    console.log("Training:", training)
-                                    backend.StopTraining(devices[deviceCursor].id)
-                                    setTraining(false);
-                                    
-                                }
-                                toggleModal();
-                                setTrainingOverwrite(false);
-                            }} disabled={!training}>Done</button>
-                            <button onClick={() => {
-                                if (training){
-                                    backend.CancelTraining(devices[deviceCursor].id)
-                                    setTraining(false);
-                                    
-                                }
-                                toggleModal();
-                                setTrainingOverwrite(false);
-                                
-                            }}>Cancel</button>
+                            <button onClick={handleDone}>Done</button>
+                            <button onClick={handleCancel}>Cancel</button>
                         </div>
                     </div>
                 </div>

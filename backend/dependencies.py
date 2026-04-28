@@ -1,8 +1,14 @@
 from fastapi import Request
 
 
-def get_ha_client(request: Request):
-    return request.app.state.ha_client
+def get_data_source(request: Request):
+    """Returns the active data source (HA or standalone)."""
+    return request.app.state.data_source
+
+
+def get_settings(request: Request):
+    """Returns the application settings."""
+    return request.app.state.settings
 
 
 def get_devices(request: Request):

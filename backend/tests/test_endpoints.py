@@ -7,8 +7,6 @@ persisted files are needed.
 import sys
 import os
 from contextlib import asynccontextmanager
-from unittest.mock import MagicMock
-
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -16,6 +14,8 @@ from fastapi.testclient import TestClient
 # Ensure the backend package is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
+from backend.datasource import StandaloneDataSource
+from backend.config import Settings
 from backend.db.sqlite import SQLiteRepository
 from backend.routes.devices import router as devices_router
 from backend.routes.rooms import router as rooms_router
@@ -33,7 +33,8 @@ def _create_test_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        app.state.ha_client = MagicMock()
+        app.state.data_source = StandaloneDataSource()
+        app.state.settings = Settings(data_path="data", db_filename="aipresence.db")
         app.state.trackers = {}
         app.state.sensors = {}
         app.state.devices = {}
@@ -52,12 +53,12 @@ def _create_test_app() -> FastAPI:
 
 
 @pytest.fixture()
-def client(tmp_path, monkeypatch):
+def client(tmp_path):
     """Provide a TestClient with a temp DATA_PATH so saves don't touch real files."""
-    import backend.config as config
-    monkeypatch.setattr(config, "DATA_PATH", str(tmp_path))
     app = _create_test_app()
     with TestClient(app) as c:
+        # Override settings.data_path after lifespan has run
+        c.app.state.settings = Settings(data_path=str(tmp_path), db_filename="aipresence.db")
         yield c
 
 

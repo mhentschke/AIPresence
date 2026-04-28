@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..classes import Binary_Sensor
-from ..dependencies import get_ha_client, get_repository, get_sensors
+from ..dependencies import get_data_source, get_repository, get_sensors
 from ..schemas import SensorResponse
 
 router = APIRouter()
@@ -25,7 +25,7 @@ def list_sensors(sensors: dict = Depends(get_sensors)):
 def create_sensor(
     entity_id: str,
     sensors: dict = Depends(get_sensors),
-    client=Depends(get_ha_client),
+    data_source=Depends(get_data_source),
     repo=Depends(get_repository),
 ):
     if entity_id in sensors:
@@ -33,7 +33,7 @@ def create_sensor(
             status_code=409,
             detail="Already exists. To overwrite, please use the PUT method",
         )
-    sensors[entity_id] = Binary_Sensor(entity_id, data_source=client)
+    sensors[entity_id] = Binary_Sensor(entity_id, data_source=data_source)
     repo.save_sensor(entity_id, False)
     return {"detail": "Success"}
 

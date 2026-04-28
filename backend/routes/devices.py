@@ -4,9 +4,8 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from .. import config
 from ..classes import Device, Model
-from ..dependencies import get_data_gatherer, get_devices, get_repository, get_rooms
+from ..dependencies import get_data_gatherer, get_devices, get_repository, get_rooms, get_settings
 from ..schemas import (
     DeviceCreate,
     DeviceResponse,
@@ -44,11 +43,11 @@ def _device_to_response(device_id: str, device: Device) -> DeviceResponse:
     )
 
 
-def save_model_artifacts(device: Device) -> None:
+def save_model_artifacts(device: Device, settings) -> None:
     """Save pickle/CSV model artifacts to disk."""
     if device.model is None or device.model.trained_model is None:
         return
-    data_path = os.path.join(config.DATA_PATH, device.model.data_path)
+    data_path = os.path.join(settings.data_path, device.model.data_path)
     os.makedirs(data_path, exist_ok=True)
     device.model.data.to_csv(Model.get_data_filepath(data_path), index=False)
     with open(Model.get_model_filepath(data_path), "wb") as f:
@@ -57,11 +56,11 @@ def save_model_artifacts(device: Device) -> None:
         pickle.dump(device.model.scaler, f)
 
 
-def _persist_device_model(device_id: str, device: Device, repo) -> None:
+def _persist_device_model(device_id: str, device: Device, repo, settings) -> None:
     """Save model artifacts to disk and metadata to the repository."""
     if device.model is None or device.model.trained_model is None:
         return
-    save_model_artifacts(device)
+    save_model_artifacts(device, settings)
     repo.save_model_metadata(
         device_id,
         device.model.data_path,
@@ -180,7 +179,7 @@ def start_training(
 
 
 @router.get("/{device_id}/model/stop_training")
-def stop_training(device_id: str, devices: dict = Depends(get_devices), repo=Depends(get_repository)):
+def stop_training(device_id: str, devices: dict = Depends(get_devices), repo=Depends(get_repository), settings=Depends(get_settings)):
     if device_id not in devices:
         raise HTTPException(status_code=404, detail="Device not found")
     if not devices[device_id].training:
@@ -188,7 +187,7 @@ def stop_training(device_id: str, devices: dict = Depends(get_devices), repo=Dep
     devices[device_id].stop_training()
     device = devices[device_id]
     repo.save_device(device_id, device.name, device.entity_id, device.beacon_id)
-    _persist_device_model(device_id, device, repo)
+    _persist_device_model(device_id, device, repo, settings)
     return {"detail": "Success"}
 
 
@@ -203,14 +202,14 @@ def cancel_training(device_id: str, devices: dict = Depends(get_devices)):
 
 
 @router.post("/{device_id}/model/retrain")
-def retrain(device_id: str, devices: dict = Depends(get_devices), repo=Depends(get_repository)):
+def retrain(device_id: str, devices: dict = Depends(get_devices), repo=Depends(get_repository), settings=Depends(get_settings)):
     if device_id not in devices:
         raise HTTPException(status_code=404, detail="Device not found")
     if devices[device_id].training:
         raise HTTPException(status_code=400, detail="Device is already training")
     devices[device_id].retrain()
     device = devices[device_id]
-    _persist_device_model(device_id, device, repo)
+    _persist_device_model(device_id, device, repo, settings)
     return {"detail": "Success"}
 
 

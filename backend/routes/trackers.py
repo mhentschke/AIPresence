@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..classes import Smartphone_Tracker
-from ..dependencies import get_ha_client, get_repository, get_trackers
+from ..dependencies import get_data_source, get_repository, get_trackers
 from ..schemas import TrackerCreate, TrackerResponse
 
 router = APIRouter()
@@ -28,7 +28,7 @@ def create_tracker(
     entity_id: str,
     body: TrackerCreate,
     trackers: dict = Depends(get_trackers),
-    client=Depends(get_ha_client),
+    data_source=Depends(get_data_source),
     repo=Depends(get_repository),
 ):
     if entity_id in trackers:
@@ -38,7 +38,7 @@ def create_tracker(
         )
     trackers[entity_id] = Smartphone_Tracker(
         entity_id,
-        data_source=client,
+        data_source=data_source,
         mobile=body.mobile,
         whitelist=body.whitelist,
         blacklist=body.blacklist,
@@ -52,14 +52,14 @@ def update_tracker(
     entity_id: str,
     body: TrackerCreate,
     trackers: dict = Depends(get_trackers),
-    client=Depends(get_ha_client),
+    data_source=Depends(get_data_source),
     repo=Depends(get_repository),
 ):
     if entity_id not in trackers:
         raise HTTPException(status_code=404, detail="Entity not found")
     trackers[entity_id] = Smartphone_Tracker(
         entity_id,
-        data_source=client,
+        data_source=data_source,
         mobile=body.mobile,
         whitelist=body.whitelist,
         blacklist=body.blacklist,

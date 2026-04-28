@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from ..classes import Binary_Sensor
 from ..dependencies import get_data_source, get_repository, get_sensors
-from ..schemas import SensorResponse
+from ..schemas import SensorResponse, SensorUpdate
 
 router = APIRouter()
 
@@ -35,6 +35,20 @@ def create_sensor(
         )
     sensors[entity_id] = Binary_Sensor(entity_id, data_source=data_source)
     repo.save_sensor(entity_id, False)
+    return {"id": entity_id}
+
+
+@router.put("/{entity_id}")
+def update_sensor(
+    entity_id: str,
+    body: SensorUpdate,
+    sensors: dict = Depends(get_sensors),
+    repo=Depends(get_repository),
+):
+    if entity_id not in sensors:
+        raise HTTPException(status_code=404, detail="Entity not found")
+    sensors[entity_id].mobile = body.mobile
+    repo.save_sensor(entity_id, body.mobile)
     return {"detail": "Success"}
 
 

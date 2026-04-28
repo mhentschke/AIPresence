@@ -44,7 +44,7 @@ def create_tracker(
         blacklist=body.blacklist,
     )
     repo.save_tracker(entity_id, body.mobile, body.whitelist, body.blacklist)
-    return {"detail": "Success"}
+    return {"id": entity_id}
 
 
 @router.put("/{entity_id}")

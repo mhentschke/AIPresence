@@ -69,6 +69,10 @@ def _create_test_app() -> FastAPI:
         except DataSourceUnavailableError:
             raise HTTPException(status_code=503, detail="Home Assistant is not configured")
 
+    @app.get("/ha/entities")
+    def list_ha_entities(domain: str | None = None, data_source=Depends(get_data_source)):
+        return data_source.list_entities(domain)
+
     return app
 
 
@@ -96,7 +100,7 @@ class TestRooms:
     def test_create_and_get_room(self, client):
         resp = client.post("/rooms", json={"name": "Kitchen", "color": "#ff0000"})
         assert resp.status_code == 200
-        room_id = resp.json()
+        room_id = resp.json()["id"]
 
         resp = client.get(f"/rooms/{room_id}")
         assert resp.status_code == 200
@@ -105,7 +109,7 @@ class TestRooms:
         assert data["color"] == "#ff0000"
 
     def test_update_room(self, client):
-        room_id = client.post("/rooms", json={"name": "Office"}).json()
+        room_id = client.post("/rooms", json={"name": "Office"}).json()["id"]
         resp = client.put(f"/rooms/{room_id}", json={"name": "Study", "color": "#00ff00"})
         assert resp.status_code == 200
 
@@ -113,7 +117,7 @@ class TestRooms:
         assert data["name"] == "Study"
 
     def test_delete_room(self, client):
-        room_id = client.post("/rooms", json={"name": "Garage"}).json()
+        room_id = client.post("/rooms", json={"name": "Garage"}).json()["id"]
         resp = client.delete(f"/rooms/{room_id}")
         assert resp.status_code == 200
 
@@ -228,7 +232,7 @@ class TestDevices:
     def test_create_and_get_device(self, client):
         resp = client.post("/devices", json={"name": "Phone", "entity_id": "device_tracker.phone"})
         assert resp.status_code == 200
-        device_id = resp.json()
+        device_id = resp.json()["id"]
 
         resp = client.get(f"/devices/{device_id}")
         assert resp.status_code == 200
@@ -237,7 +241,7 @@ class TestDevices:
         assert data["entity_id"] == "device_tracker.phone"
 
     def test_delete_device(self, client):
-        device_id = client.post("/devices", json={"name": "Beacon", "beacon_id": "AA:BB:CC"}).json()
+        device_id = client.post("/devices", json={"name": "Beacon", "beacon_id": "AA:BB:CC"}).json()["id"]
         resp = client.delete(f"/devices/{device_id}")
         assert resp.status_code == 200
         assert client.get(f"/devices/{device_id}").status_code == 404
@@ -312,3 +316,73 @@ class TestDataSourceUnavailableHandler:
         resp = client.get("/_test/trigger_datasource_error")
         assert resp.status_code == 503
         assert "unavailable" in resp.json()["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Create endpoints return {id: ...} format
+# ---------------------------------------------------------------------------
+
+
+class TestCreateReturnsId:
+    def test_create_room_returns_id(self, client):
+        resp = client.post("/rooms", json={"name": "Kitchen", "color": "#ff0000"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "id" in body
+        assert isinstance(body["id"], str)
+
+    def test_create_tracker_returns_id(self, client):
+        resp = client.post("/trackers/device_tracker.phone", json={"mobile": True})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body == {"id": "device_tracker.phone"}
+
+    def test_create_sensor_returns_id(self, client):
+        resp = client.post("/sensors/binary_sensor.motion")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body == {"id": "binary_sensor.motion"}
+
+    def test_create_device_returns_id(self, client):
+        resp = client.post("/devices", json={"name": "Phone", "entity_id": "device_tracker.phone"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "id" in body
+        assert isinstance(body["id"], str)
+
+
+# ---------------------------------------------------------------------------
+# PUT /sensors/{entity_id}
+# ---------------------------------------------------------------------------
+
+
+class TestSensorUpdate:
+    def test_update_sensor_mobile_flag(self, client):
+        client.post("/sensors/binary_sensor.motion")
+        resp = client.put("/sensors/binary_sensor.motion", json={"mobile": True})
+        assert resp.status_code == 200
+
+        sensors = client.get("/sensors").json()
+        assert sensors[0]["mobile"] is True
+
+    def test_update_sensor_not_found(self, client):
+        resp = client.put("/sensors/nonexistent", json={"mobile": True})
+        assert resp.status_code == 404
+        assert "detail" in resp.json()
+
+
+# ---------------------------------------------------------------------------
+# GET /ha/entities (standalone mode → 503)
+# ---------------------------------------------------------------------------
+
+
+class TestHAEntities:
+    def test_ha_entities_returns_503_in_standalone_mode(self, client):
+        resp = client.get("/ha/entities")
+        assert resp.status_code == 503
+        assert "detail" in resp.json()
+
+    def test_ha_entities_with_domain_returns_503_in_standalone_mode(self, client):
+        resp = client.get("/ha/entities?domain=device_tracker")
+        assert resp.status_code == 503
+        assert "detail" in resp.json()

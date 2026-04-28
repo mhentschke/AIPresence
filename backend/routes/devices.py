@@ -96,7 +96,7 @@ def create_device(
         data_gatherer=data_gatherer,
     )
     repo.save_device(device_id, body.name, body.entity_id, body.beacon_id)
-    return device_id
+    return {"id": device_id}
 
 
 # Static path "/location" must be declared before the parameterised

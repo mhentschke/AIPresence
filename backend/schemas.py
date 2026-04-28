@@ -39,6 +39,10 @@ class TrainingStart(BaseModel):
     append: bool = False
 
 
+class SensorUpdate(BaseModel):
+    mobile: bool
+
+
 # ---------------------------------------------------------------------------
 # API Response Models
 # ---------------------------------------------------------------------------

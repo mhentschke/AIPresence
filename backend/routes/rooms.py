@@ -22,7 +22,7 @@ def create_room(body: RoomCreate, rooms: dict = Depends(get_rooms), repo=Depends
     room_id = str(uuid.uuid4())
     rooms[room_id] = Room(room_id, body.name, body.color)
     repo.save_room(room_id, body.name, body.color)
-    return room_id
+    return {"id": room_id}
 
 
 @router.get("/{room_id}", response_model=RoomResponse)

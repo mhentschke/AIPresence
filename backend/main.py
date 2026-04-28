@@ -165,6 +165,11 @@ def check_entity_id(entity_id: str, data_source=Depends(get_data_source)):
         raise HTTPException(status_code=503, detail="Home Assistant is not configured")
 
 
+@app.get("/ha/entities")
+def list_ha_entities(domain: str | None = None, data_source=Depends(get_data_source)):
+    return data_source.list_entities(domain)
+
+
 # --- Admin endpoints ---
 RELOAD_SAFE_KEYS = {"log_level", "sample_rate", "minimum_training_samples", "ha_url", "ha_token"}
 RESTART_ONLY_KEYS = {"data_path", "db_filename"}

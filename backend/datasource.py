@@ -38,6 +38,10 @@ class DataSource(Protocol):
         """Check whether an entity ID exists in the data source."""
         ...
 
+    def list_entities(self, domain: str | None = None) -> list[dict[str, str]]:
+        """List available entities, optionally filtered by domain."""
+        ...
+
 
 class HADataSource:
     """Home Assistant data source using the homeassistant_api library."""
@@ -59,6 +63,20 @@ class HADataSource:
         except EndpointNotFoundError:
             return False
 
+    def list_entities(self, domain: str | None = None) -> list[dict[str, str]]:
+        groups = self.client.get_entities()
+        result: list[dict[str, str]] = []
+        domains = [domain] if domain else list(vars(groups).keys())
+        for d in domains:
+            group = getattr(groups, d, None)
+            if group is None:
+                continue
+            for eid, entity in group.entities.items():
+                state = entity.get_state()
+                friendly = state.attributes.get("friendly_name", eid) if state and state.attributes else eid
+                result.append({"entity_id": eid, "friendly_name": friendly})
+        return result
+
 
 class StandaloneDataSource:
     """Data source for standalone mode — all operations raise."""
@@ -68,3 +86,6 @@ class StandaloneDataSource:
 
     def check_entity_exists(self, entity_id: str) -> bool:
         raise DataSourceUnavailableError("Home Assistant is not configured. Entity validation is unavailable.")
+
+    def list_entities(self, domain: str | None = None) -> list[dict[str, str]]:
+        raise DataSourceUnavailableError("Home Assistant is not configured. Entity listing is unavailable.")

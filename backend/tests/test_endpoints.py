@@ -8,15 +8,17 @@ import sys
 import os
 from contextlib import asynccontextmanager
 import pytest
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 # Ensure the backend package is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
-from backend.datasource import StandaloneDataSource
+from backend.datasource import DataSourceUnavailableError, StandaloneDataSource
 from backend.config import Settings
 from backend.db.sqlite import SQLiteRepository
+from backend.dependencies import get_data_source
 from backend.routes.devices import router as devices_router
 from backend.routes.rooms import router as rooms_router
 from backend.routes.sensors import router as sensors_router
@@ -45,10 +47,31 @@ def _create_test_app() -> FastAPI:
     app = FastAPI(lifespan=lifespan)
     app.add_exception_handler(ValueError, value_error_handler)
     app.add_exception_handler(Exception, generic_exception_handler)
+
+    async def data_source_unavailable_handler(
+        request: Request, exc: DataSourceUnavailableError
+    ):
+        return JSONResponse(status_code=503, content={"detail": str(exc)})
+
+    app.add_exception_handler(DataSourceUnavailableError, data_source_unavailable_handler)
+
     app.include_router(rooms_router, prefix="/rooms")
     app.include_router(trackers_router, prefix="/trackers")
     app.include_router(sensors_router, prefix="/sensors")
     app.include_router(devices_router, prefix="/devices")
+
+    @app.get("/device/check_entity_id/{entity_id}")
+    def check_entity_id(entity_id: str, data_source=Depends(get_data_source)):
+        try:
+            exists = data_source.check_entity_exists(entity_id)
+            if exists:
+                return {"detail": "Success"}
+            raise HTTPException(status_code=404, detail="Entity not found")
+        except DataSourceUnavailableError:
+            raise HTTPException(
+                status_code=503, detail="Home Assistant is not configured"
+            )
+
     return app
 
 
@@ -247,3 +270,41 @@ class TestValidation:
         resp = client.post("/rooms", json={"color": "#fff"})
         assert resp.status_code == 422
         assert "detail" in resp.json()
+
+
+# ---------------------------------------------------------------------------
+# Check Entity ID endpoint (standalone mode → 503)
+# ---------------------------------------------------------------------------
+
+class TestCheckEntityId:
+    def test_check_entity_id_returns_503_in_standalone_mode(self, client):
+        resp = client.get("/device/check_entity_id/binary_sensor.motion")
+        assert resp.status_code == 503
+        assert "Home Assistant is not configured" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# DataSourceUnavailableError handler
+# ---------------------------------------------------------------------------
+
+class TestDataSourceUnavailableHandler:
+    def test_datasource_unavailable_returns_503(self, client):
+        """Verify the global exception handler catches DataSourceUnavailableError and returns 503."""
+        from backend.classes import Binary_Sensor
+        from backend.datasource import StandaloneDataSource
+
+        # Create a sensor backed by StandaloneDataSource, then add a route
+        # that triggers get_data() which raises DataSourceUnavailableError.
+        sensor = Binary_Sensor(entity_id="binary_sensor.test", data_source=StandaloneDataSource())
+        client.app.state.sensors["binary_sensor.test"] = sensor
+
+        # The training/prediction flow calls get_data() on sensors, which raises
+        # DataSourceUnavailableError in standalone mode. We simulate this by
+        # adding a temporary endpoint that calls get_data().
+        @client.app.get("/_test/trigger_datasource_error")
+        def _trigger():
+            sensor.get_data()
+
+        resp = client.get("/_test/trigger_datasource_error")
+        assert resp.status_code == 503
+        assert "unavailable" in resp.json()["detail"].lower()

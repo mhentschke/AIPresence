@@ -23,7 +23,7 @@ from .datasource import (
 )
 from .db.migration import migrate_json_to_db, needs_migration
 from .db.sqlite import SQLiteRepository
-from .dependencies import get_data_source
+from .dependencies import get_data_source, get_settings
 from .errors import generic_exception_handler, value_error_handler
 from .routes.devices import router as devices_router
 from .routes.rooms import router as rooms_router
@@ -175,3 +175,54 @@ def check_entity_id(entity_id: str, data_source=Depends(get_data_source)):
         raise HTTPException(
             status_code=503, detail="Home Assistant is not configured"
         )
+
+
+# --- Admin endpoints ---
+RELOAD_SAFE_KEYS = {"log_level", "sample_rate", "minimum_training_samples", "ha_url", "ha_token"}
+RESTART_ONLY_KEYS = {"data_path", "db_filename"}
+
+
+@app.post("/admin/reload-config")
+def reload_config(request: Request, settings=Depends(get_settings)):
+    new_settings = Settings()
+    changed: list[str] = []
+
+    # Apply reload-safe settings
+    for key in RELOAD_SAFE_KEYS:
+        old_val = getattr(settings, key)
+        new_val = getattr(new_settings, key)
+        if old_val != new_val:
+            setattr(settings, key, new_val)
+            changed.append(key)
+
+    # Adjust root logger level immediately
+    if "log_level" in changed:
+        logging.getLogger().setLevel(
+            getattr(logging, settings.log_level.upper(), logging.INFO)
+        )
+        logger.info("Log level changed to %s", settings.log_level)
+
+    # Recreate data source if HA credentials changed
+    if "ha_url" in changed or "ha_token" in changed:
+        if settings.ha_configured:
+            data_source = HADataSource(settings.ha_url, settings.ha_token)
+            logger.info("HA data source reconfigured (%s)", settings.ha_url)
+        else:
+            data_source = StandaloneDataSource()
+            logger.warning("HA credentials removed — switching to standalone mode")
+        request.app.state.data_source = data_source
+        for tracker in request.app.state.trackers.values():
+            tracker.data_source = data_source
+        for sensor in request.app.state.sensors.values():
+            sensor.data_source = data_source
+
+    # Warn about restart-only settings that changed but won't be applied
+    for key in RESTART_ONLY_KEYS:
+        old_val = getattr(settings, key)
+        new_val = getattr(new_settings, key)
+        if old_val != new_val:
+            logger.warning(
+                "Config '%s' changed in .env but requires restart to take effect", key
+            )
+
+    return {"reloaded": changed}

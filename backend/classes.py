@@ -143,6 +143,9 @@ class Model(object):
         df.fillna(df.max(), inplace=True)
         g = df.groupby("room")
         df_resampled = g.apply(lambda x: x.sample(g.size().min()).reset_index(drop=True))
+        # pandas 3.x moves the groupby key into a MultiIndex; reset to get "room" back as a column
+        if "room" not in df_resampled.columns and "room" in df_resampled.index.names:
+            df_resampled = df_resampled.reset_index(level="room")
         room_encoded = pd.get_dummies(df_resampled["room"], prefix="room")
         df_encoded = pd.concat([df_resampled, room_encoded], axis=1)
         df_encoded.drop(["room"], axis=1, inplace=True)

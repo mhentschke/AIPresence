@@ -11,18 +11,24 @@ from backend.classes import Model, Model_Stats, append_to_dataframe
 # ---------------------------------------------------------------------------
 
 def _synthetic_df(n_per_room=20):
-    """Build a small synthetic DataFrame with 3 rooms and 4 sensor columns."""
+    """Build a small synthetic DataFrame with 3 rooms and 4 sensor columns.
+
+    Each room gets distinct feature ranges so the classifier can learn
+    a separable boundary and accuracy is reliably > 0.
+    """
     rooms = ["kitchen", "office", "bedroom"]
+    offsets = {"kitchen": 0.0, "office": 3.0, "bedroom": 6.0}
     rows = []
     rng = np.random.RandomState(42)
     for room in rooms:
+        base = offsets[room]
         for _ in range(n_per_room):
             rows.append({
                 "room": room,
-                "sensor_a": rng.rand(),
-                "sensor_b": rng.rand(),
-                "sensor_c": rng.rand(),
-                "sensor_d": rng.rand(),
+                "sensor_a": base + rng.rand() * 0.5,
+                "sensor_b": base + rng.rand() * 0.5,
+                "sensor_c": base + rng.rand() * 0.5,
+                "sensor_d": base + rng.rand() * 0.5,
             })
     return pd.DataFrame(rows)
 

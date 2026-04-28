@@ -21,6 +21,10 @@ def get_rooms(request: Request):
     return request.app.state.rooms
 
 
+def get_repository(request: Request):
+    return request.app.state.repository
+
+
 def get_data_gatherer(request: Request):
     """Returns a callable that gathers current data from all trackers and sensors."""
     def gather():

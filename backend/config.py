@@ -1,3 +1,4 @@
 DATA_PATH = "data"
+DB_FILENAME = "aipresence.db"
 SAMPLE_RATE = 2
 MINIMUM_TRAINING_SAMPLES = 200

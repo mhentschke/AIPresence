@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 # Ensure the backend package is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
+from backend.db.sqlite import SQLiteRepository
 from backend.routes.devices import router as devices_router
 from backend.routes.rooms import router as rooms_router
 from backend.routes.sensors import router as sensors_router
@@ -37,6 +38,7 @@ def _create_test_app() -> FastAPI:
         app.state.sensors = {}
         app.state.devices = {}
         app.state.rooms = {}
+        app.state.repository = SQLiteRepository(":memory:")
         yield
 
     app = FastAPI(lifespan=lifespan)

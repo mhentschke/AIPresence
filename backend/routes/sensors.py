@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from .. import storage
 from ..classes import Binary_Sensor
-from ..dependencies import get_ha_client, get_sensors
+from ..dependencies import get_ha_client, get_repository, get_sensors
 from ..schemas import SensorResponse
 
 router = APIRouter()
@@ -27,6 +26,7 @@ def create_sensor(
     entity_id: str,
     sensors: dict = Depends(get_sensors),
     client=Depends(get_ha_client),
+    repo=Depends(get_repository),
 ):
     if entity_id in sensors:
         raise HTTPException(
@@ -34,14 +34,14 @@ def create_sensor(
             detail="Already exists. To overwrite, please use the PUT method",
         )
     sensors[entity_id] = Binary_Sensor(entity_id, ha_client=client)
-    storage.save_sensors(sensors)
+    repo.save_sensor(entity_id, False)
     return {"detail": "Success"}
 
 
 @router.delete("/{entity_id}")
-def delete_sensor(entity_id: str, sensors: dict = Depends(get_sensors)):
+def delete_sensor(entity_id: str, sensors: dict = Depends(get_sensors), repo=Depends(get_repository)):
     if entity_id not in sensors:
         raise HTTPException(status_code=404, detail="Entity not found")
     del sensors[entity_id]
-    storage.save_sensors(sensors)
+    repo.delete_sensor(entity_id)
     return {"detail": "Success"}

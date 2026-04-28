@@ -1,13 +1,25 @@
 import logging
 import os
+import pickle
 from contextlib import asynccontextmanager
 
+import pandas as pd
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from homeassistant_api import Client
 from homeassistant_api.errors import EndpointNotFoundError
 
-from . import storage
+from . import config
+from .classes import (
+    Binary_Sensor,
+    Device,
+    Model,
+    Model_Stats,
+    Room,
+    Smartphone_Tracker,
+)
+from .db.migration import migrate_json_to_db, needs_migration
+from .db.sqlite import SQLiteRepository
 from .dependencies import get_ha_client
 from .errors import generic_exception_handler, value_error_handler
 from .routes.devices import router as devices_router
@@ -22,36 +34,39 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
-    client = Client(
-        os.environ["HA_URL"],
-        os.environ["HA_TOKEN"],
-    )
+    # --- Database ---
+    db_path = os.path.join(config.DATA_PATH, config.DB_FILENAME)
+    repo = SQLiteRepository(db_path)
+    app.state.repository = repo
+
+    # --- JSON migration (one-time) ---
+    if needs_migration(config.DATA_PATH, repo):
+        migrate_json_to_db(config.DATA_PATH, repo)
+
+    # --- HA Client ---
+    client = Client(os.environ["HA_URL"], os.environ["HA_TOKEN"])
     app.state.ha_client = client
 
-    # Load persisted state — each block is independent so one failure
-    # doesn't prevent the others from loading.
-    app.state.trackers = {}
-    app.state.sensors = {}
-    app.state.devices = {}
+    # --- Load state from DB ---
     app.state.rooms = {}
+    for k, v in repo.load_all_rooms().items():
+        app.state.rooms[k] = Room(v["id"], v["name"], v["color"])
 
-    try:
-        app.state.trackers = storage.load_trackers()
-        for tracker in app.state.trackers.values():
-            tracker.ha_client = client
-    except FileNotFoundError:
-        logger.info("Trackers file not found, starting from scratch")
-    except Exception:
-        logger.exception("Error loading trackers, starting from scratch")
+    app.state.trackers = {}
+    for k, v in repo.load_all_trackers().items():
+        app.state.trackers[k] = Smartphone_Tracker(
+            entity_id=v["entity_id"],
+            ha_client=client,
+            mobile=v["mobile"],
+            whitelist=v["whitelist"],
+            blacklist=v["blacklist"],
+        )
 
-    try:
-        app.state.sensors = storage.load_sensors()
-        for sensor in app.state.sensors.values():
-            sensor.ha_client = client
-    except FileNotFoundError:
-        logger.info("Sensors file not found, starting from scratch")
-    except Exception:
-        logger.exception("Error loading sensors, starting from scratch")
+    app.state.sensors = {}
+    for k, v in repo.load_all_sensors().items():
+        app.state.sensors[k] = Binary_Sensor(
+            entity_id=v["entity_id"], ha_client=client, mobile=v["mobile"]
+        )
 
     # Build the data gatherer closure now that trackers & sensors are loaded.
     def data_gatherer():
@@ -67,26 +82,47 @@ async def lifespan(app: FastAPI):
             data.update(temp_data)
         return data
 
-    try:
-        app.state.devices = storage.load_devices(data_gatherer=data_gatherer)
-        for device in app.state.devices.values():
-            device.data_gatherer = data_gatherer
-            if device.model is not None:
-                device.model.data_gatherer = data_gatherer
-    except FileNotFoundError:
-        logger.info("Devices file not found, starting from scratch")
-    except Exception:
-        logger.exception("Error loading devices, starting from scratch")
-
-    try:
-        app.state.rooms = storage.load_rooms()
-    except FileNotFoundError:
-        logger.info("Rooms file not found, starting from scratch")
-    except Exception:
-        logger.exception("Error loading rooms, starting from scratch")
+    app.state.devices = {}
+    for k, v in repo.load_all_devices().items():
+        model = None
+        meta = repo.load_model_metadata(k)
+        if meta is not None:
+            data_path = os.path.join(config.DATA_PATH, meta["data_path"])
+            try:
+                model = Model(
+                    data_path=meta["data_path"],
+                    data=pd.read_csv(Model.get_data_filepath(data_path)),
+                    trained_model=pickle.load(
+                        open(Model.get_model_filepath(data_path), "rb")
+                    ),
+                    trained_model_stats=Model_Stats(
+                        model_type=meta["model_type"],
+                        classification_report=meta["classification_report"],
+                        accuracy=meta["accuracy"],
+                    ),
+                    scaler=pickle.load(
+                        open(Model.get_scaler_filepath(data_path), "rb")
+                    ),
+                    data_gatherer=data_gatherer,
+                    trained_columns=meta["trained_columns"],
+                )
+            except Exception:
+                logger.warning(
+                    "Failed to load model artifacts for device %s, loading without model",
+                    k,
+                )
+        app.state.devices[k] = Device(
+            name=v["name"],
+            entity_id=v.get("entity_id"),
+            beacon_id=v.get("beacon_id"),
+            model=model,
+            data_gatherer=data_gatherer,
+        )
 
     yield
-    # Shutdown — nothing to clean up for now
+
+    # --- Shutdown ---
+    repo.close()
 
 
 app = FastAPI(title="AIPresence", lifespan=lifespan)

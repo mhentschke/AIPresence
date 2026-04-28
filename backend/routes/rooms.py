@@ -2,9 +2,8 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from .. import storage
 from ..classes import Room
-from ..dependencies import get_rooms
+from ..dependencies import get_repository, get_rooms
 from ..schemas import RoomCreate, RoomResponse
 
 router = APIRouter()
@@ -21,10 +20,10 @@ def list_rooms(rooms: dict = Depends(get_rooms)):
 
 
 @router.post("")
-def create_room(body: RoomCreate, rooms: dict = Depends(get_rooms)):
+def create_room(body: RoomCreate, rooms: dict = Depends(get_rooms), repo=Depends(get_repository)):
     room_id = str(uuid.uuid4())
     rooms[room_id] = Room(room_id, body.name, body.color)
-    storage.save_rooms(rooms)
+    repo.save_room(room_id, body.name, body.color)
     return room_id
 
 
@@ -37,16 +36,16 @@ def get_room(room_id: str, rooms: dict = Depends(get_rooms)):
 
 
 @router.put("/{room_id}")
-def update_room(room_id: str, body: RoomCreate, rooms: dict = Depends(get_rooms)):
+def update_room(room_id: str, body: RoomCreate, rooms: dict = Depends(get_rooms), repo=Depends(get_repository)):
     rooms[room_id] = Room(room_id, body.name, body.color)
-    storage.save_rooms(rooms)
+    repo.save_room(room_id, body.name, body.color)
     return {"detail": "Success"}
 
 
 @router.delete("/{room_id}")
-def delete_room(room_id: str, rooms: dict = Depends(get_rooms)):
+def delete_room(room_id: str, rooms: dict = Depends(get_rooms), repo=Depends(get_repository)):
     if room_id not in rooms:
         raise HTTPException(status_code=404, detail="Room not found")
     del rooms[room_id]
-    storage.save_rooms(rooms)
+    repo.delete_room(room_id)
     return {"detail": "Success"}

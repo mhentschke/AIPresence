@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from .. import storage
 from ..classes import Smartphone_Tracker
-from ..dependencies import get_ha_client, get_trackers
+from ..dependencies import get_ha_client, get_repository, get_trackers
 from ..schemas import TrackerCreate, TrackerResponse
 
 router = APIRouter()
@@ -30,6 +29,7 @@ def create_tracker(
     body: TrackerCreate,
     trackers: dict = Depends(get_trackers),
     client=Depends(get_ha_client),
+    repo=Depends(get_repository),
 ):
     if entity_id in trackers:
         raise HTTPException(
@@ -43,7 +43,7 @@ def create_tracker(
         whitelist=body.whitelist,
         blacklist=body.blacklist,
     )
-    storage.save_trackers(trackers)
+    repo.save_tracker(entity_id, body.mobile, body.whitelist, body.blacklist)
     return {"detail": "Success"}
 
 
@@ -53,6 +53,7 @@ def update_tracker(
     body: TrackerCreate,
     trackers: dict = Depends(get_trackers),
     client=Depends(get_ha_client),
+    repo=Depends(get_repository),
 ):
     if entity_id not in trackers:
         raise HTTPException(status_code=404, detail="Entity not found")
@@ -63,14 +64,14 @@ def update_tracker(
         whitelist=body.whitelist,
         blacklist=body.blacklist,
     )
-    storage.save_trackers(trackers)
+    repo.save_tracker(entity_id, body.mobile, body.whitelist, body.blacklist)
     return {"detail": "Success"}
 
 
 @router.delete("/{entity_id}")
-def delete_tracker(entity_id: str, trackers: dict = Depends(get_trackers)):
+def delete_tracker(entity_id: str, trackers: dict = Depends(get_trackers), repo=Depends(get_repository)):
     if entity_id not in trackers:
         raise HTTPException(status_code=404, detail="Entity not found")
     del trackers[entity_id]
-    storage.save_trackers(trackers)
+    repo.delete_tracker(entity_id)
     return {"detail": "Success"}

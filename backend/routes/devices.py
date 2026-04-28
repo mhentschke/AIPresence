@@ -1,10 +1,12 @@
+import os
+import pickle
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from .. import storage
-from ..classes import Device
-from ..dependencies import get_data_gatherer, get_devices, get_rooms
+from .. import config
+from ..classes import Device, Model
+from ..dependencies import get_data_gatherer, get_devices, get_repository, get_rooms
 from ..schemas import (
     DeviceCreate,
     DeviceResponse,
@@ -42,6 +44,34 @@ def _device_to_response(device_id: str, device: Device) -> DeviceResponse:
     )
 
 
+def save_model_artifacts(device: Device) -> None:
+    """Save pickle/CSV model artifacts to disk."""
+    if device.model is None or device.model.trained_model is None:
+        return
+    data_path = os.path.join(config.DATA_PATH, device.model.data_path)
+    os.makedirs(data_path, exist_ok=True)
+    device.model.data.to_csv(Model.get_data_filepath(data_path), index=False)
+    with open(Model.get_model_filepath(data_path), "wb") as f:
+        pickle.dump(device.model.trained_model, f)
+    with open(Model.get_scaler_filepath(data_path), "wb") as f:
+        pickle.dump(device.model.scaler, f)
+
+
+def _persist_device_model(device_id: str, device: Device, repo) -> None:
+    """Save model artifacts to disk and metadata to the repository."""
+    if device.model is None or device.model.trained_model is None:
+        return
+    save_model_artifacts(device)
+    repo.save_model_metadata(
+        device_id,
+        device.model.data_path,
+        device.model.trained_model_stats.accuracy,
+        device.model.trained_model_stats.model_type,
+        device.model.trained_model_stats.classification_report,
+        device.model.trained_columns,
+    )
+
+
 # ---------------------------------------------------------------------------
 # CRUD + Location
 # ---------------------------------------------------------------------------
@@ -57,6 +87,7 @@ def create_device(
     body: DeviceCreate,
     devices: dict = Depends(get_devices),
     data_gatherer=Depends(get_data_gatherer),
+    repo=Depends(get_repository),
 ):
     device_id = str(uuid.uuid4())
     devices[device_id] = Device(
@@ -65,7 +96,7 @@ def create_device(
         beacon_id=body.beacon_id,
         data_gatherer=data_gatherer,
     )
-    storage.save_devices(devices)
+    repo.save_device(device_id, body.name, body.entity_id, body.beacon_id)
     return device_id
 
 
@@ -92,6 +123,7 @@ def update_device(
     body: DeviceCreate,
     devices: dict = Depends(get_devices),
     data_gatherer=Depends(get_data_gatherer),
+    repo=Depends(get_repository),
 ):
     # Preserve existing model when updating
     model = None
@@ -104,16 +136,16 @@ def update_device(
         model=model,
         data_gatherer=data_gatherer,
     )
-    storage.save_devices(devices)
+    repo.save_device(device_id, body.name, body.entity_id, body.beacon_id)
     return {"detail": "Success"}
 
 
 @router.delete("/{device_id}")
-def delete_device(device_id: str, devices: dict = Depends(get_devices)):
+def delete_device(device_id: str, devices: dict = Depends(get_devices), repo=Depends(get_repository)):
     if device_id not in devices:
         raise HTTPException(status_code=404, detail="Device not found")
     del devices[device_id]
-    storage.save_devices(devices)
+    repo.delete_device(device_id)
     return {"detail": "Success"}
 
 
@@ -148,13 +180,15 @@ def start_training(
 
 
 @router.get("/{device_id}/model/stop_training")
-def stop_training(device_id: str, devices: dict = Depends(get_devices)):
+def stop_training(device_id: str, devices: dict = Depends(get_devices), repo=Depends(get_repository)):
     if device_id not in devices:
         raise HTTPException(status_code=404, detail="Device not found")
     if not devices[device_id].training:
         raise HTTPException(status_code=400, detail="Device is not training")
     devices[device_id].stop_training()
-    storage.save_devices(devices)
+    device = devices[device_id]
+    repo.save_device(device_id, device.name, device.entity_id, device.beacon_id)
+    _persist_device_model(device_id, device, repo)
     return {"detail": "Success"}
 
 
@@ -169,12 +203,14 @@ def cancel_training(device_id: str, devices: dict = Depends(get_devices)):
 
 
 @router.post("/{device_id}/model/retrain")
-def retrain(device_id: str, devices: dict = Depends(get_devices)):
+def retrain(device_id: str, devices: dict = Depends(get_devices), repo=Depends(get_repository)):
     if device_id not in devices:
         raise HTTPException(status_code=404, detail="Device not found")
     if devices[device_id].training:
         raise HTTPException(status_code=400, detail="Device is already training")
     devices[device_id].retrain()
+    device = devices[device_id]
+    _persist_device_model(device_id, device, repo)
     return {"detail": "Success"}
 
 

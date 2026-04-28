@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 
-const SensorTable = ({ data, setData, sensorEditModal, sensorSelector, backend, forceUpdate}) => {
+const SensorTable = ({ data, setData, sensorEditModal, sensorSelector, backend}) => {
   const [expandedRow, setExpandedRow] = useState(null);
 
   const toggleRow = (rowIndex) => {
@@ -33,7 +33,6 @@ const SensorTable = ({ data, setData, sensorEditModal, sensorSelector, backend, 
                     newData[index].mobile = !newData[index].mobile;
                     setData(newData);
                     await backend.UpdateSensor(newData[index]);
-                    forceUpdate();
                   }
                 }>
                 </input>
@@ -44,7 +43,6 @@ const SensorTable = ({ data, setData, sensorEditModal, sensorSelector, backend, 
                   const newData = JSON.parse(JSON.stringify(data));
                   newData.splice(index, 1);
                   setData(newData);
-                  forceUpdate();
                   }
                 }>Remove</button>
               </td>

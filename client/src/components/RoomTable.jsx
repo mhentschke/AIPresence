@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 
-const RoomTable = ({ data, setData, roomEditModal, roomSelector, backend, forceUpdate}) => {
+const RoomTable = ({ data, setData, roomEditModal, roomSelector, backend}) => {
   const [expandedRow, setExpandedRow] = useState(null);
 
   const toggleRow = (rowIndex) => {
@@ -33,7 +33,6 @@ const RoomTable = ({ data, setData, roomEditModal, roomSelector, backend, forceU
                     newData[index].color = e.target.value;
                     setData(newData);
                     backend.UpdateRoom(newData[index]);
-                    forceUpdate();
                   }
                 }></input>
               </td>
@@ -51,7 +50,6 @@ const RoomTable = ({ data, setData, roomEditModal, roomSelector, backend, forceU
                   const newData = JSON.parse(JSON.stringify(data));
                   newData.splice(index, 1);
                   setData(newData);
-                  forceUpdate();
                   }
                 }>Remove</button>
               </td>

@@ -3,7 +3,7 @@ import "./Modal.css"
 
 
 
-const RoomEditModal = ({data, setData, modal, setModal, roomCursor, backend, forceUpdate}) => {
+const RoomEditModal = ({data, setData, modal, setModal, roomCursor, backend}) => {
 
     const toggleModal = () => {
         setModal(!modal)
@@ -35,7 +35,6 @@ const RoomEditModal = ({data, setData, modal, setModal, roomCursor, backend, for
                 updatedData.push(room);
                 toggleModal();
                 setData(updatedData);
-                forceUpdate();
             } catch (err) {
                 console.error("Error creating room:", err);
             }
@@ -49,7 +48,6 @@ const RoomEditModal = ({data, setData, modal, setModal, roomCursor, backend, for
                 updatedData[roomCursor] = room;
                 toggleModal();
                 setData(updatedData);
-                forceUpdate();
             } catch (err) {
                 console.error("Error updating room:", err);
             }

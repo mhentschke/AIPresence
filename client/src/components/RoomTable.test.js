@@ -12,7 +12,7 @@ const noopFn = () => {};
 
 test('renders correct column headers', () => {
   render(
-    <RoomTable data={sampleRooms} setData={noopFn} roomEditModal={noopFn} roomSelector={noopFn} backend={{}} forceUpdate={noopFn} />
+    <RoomTable data={sampleRooms} setData={noopFn} roomEditModal={noopFn} roomSelector={noopFn} backend={{}} />
   );
 
   ['Name', 'Color', 'Options'].forEach((header) => {
@@ -22,7 +22,7 @@ test('renders correct column headers', () => {
 
 test('renders correct number of data rows', () => {
   render(
-    <RoomTable data={sampleRooms} setData={noopFn} roomEditModal={noopFn} roomSelector={noopFn} backend={{}} forceUpdate={noopFn} />
+    <RoomTable data={sampleRooms} setData={noopFn} roomEditModal={noopFn} roomSelector={noopFn} backend={{}} />
   );
 
   // thead row + 3 data rows

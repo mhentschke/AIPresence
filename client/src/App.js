@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import DeviceTable from './components/DeviceTable'
 import DeviceEditModal from './components/DeviceEditModal'
 import DeviceTrainingModal from './components/DeviceTrainingModal'
@@ -9,8 +9,6 @@ import SensorEditModal from './components/SensorEditModal'
 import RoomTable from './components/RoomTable'
 import RoomEditModal from './components/RoomEditModal'
 import {Backend} from './Backend'
-
-let interval = undefined;
 
 function getElementFromId(list, field, id){
     for (let i = 0; i < list.length; i++){
@@ -36,8 +34,15 @@ function App() {
     const [roomData, setRoomData] = useState([{}])
     const [roomEditModal, setRoomEditModal] = useState(false)
     const [roomCursor, setRoomCursor] = useState({})
-    const [, forceUpdate] = useState()
-    //const backend = new Backend();
+
+    const intervalRef = useRef(undefined);
+    const dataRef = useRef(data);
+    const roomDataRef = useRef(roomData);
+
+    // Keep refs in sync with latest state
+    useEffect(() => { dataRef.current = data; }, [data]);
+    useEffect(() => { roomDataRef.current = roomData; }, [roomData]);
+
     useEffect(() => {
         Backend.GetDevices().then( 
             data => {
@@ -66,80 +71,91 @@ function App() {
     }, [])
 
     useEffect(() => {
-        if (!(deviceEditModal || trackerEditModal || sensorEditModal || roomEditModal) && interval === undefined){
-            interval = setInterval(() => {
-                data.forEach((device, index) => {
-                    console.log("Checking device:", device);
-                    if (device.trained){
-                        console.log("Getting location for device:", device.id)
+        const anyModalOpen = deviceEditModal || deviceTrainModal || trackerEditModal || sensorEditModal || roomEditModal;
+
+        if (!anyModalOpen) {
+            intervalRef.current = setInterval(() => {
+                const currentData = dataRef.current;
+                const currentRoomData = roomDataRef.current;
+
+                currentData.forEach((device, index) => {
+                    if (device.trained) {
                         Backend.GetDeviceLocation(device.id).then(
                             response => {
-                                console.log("Updating predictions:", response);
-                                data[index].location = getElementFromId(roomData, "id", response["room"]).name;
-                                data[index].confidence = response["confidence"];
-                                
-                                forceUpdate({});
+                                const room = getElementFromId(currentRoomData, "id", response["room"]);
+                                const roomName = room !== -1 ? room.name : "Unknown";
+
+                                setData(prev => prev.map((d, i) =>
+                                    i === index
+                                        ? { ...d, location: roomName, confidence: response["confidence"] }
+                                        : d
+                                ));
                             }
-                        )
+                        ).catch(err => {
+                            console.error("Error fetching device location:", err);
+                        });
                     }
                 });
             }, 1000);
+        } else {
+            clearInterval(intervalRef.current);
+            intervalRef.current = undefined;
         }
-        else{
-            console.log("Clearing Interval");
-            clearInterval(interval);
-            interval = undefined;
-        }
-    }, [deviceEditModal, trackerEditModal, sensorEditModal, roomEditModal]);
+
+        return () => {
+            clearInterval(intervalRef.current);
+            intervalRef.current = undefined;
+        };
+    }, [deviceEditModal, deviceTrainModal, trackerEditModal, sensorEditModal, roomEditModal]);
 
     return (
         <div>
             <h1>Devices</h1>
             <div className = "w3-responsive">
-                <DeviceTable data={data} setData={setData} deviceEditModal={setDeviceEditModal} deviceTrainModal={setDeviceTrainModal} deviceSelector={setDeviceCursor} backend={Backend} forceUpdate={forceUpdate}/>
+                <DeviceTable data={data} setData={setData} deviceEditModal={setDeviceEditModal} deviceTrainModal={setDeviceTrainModal} deviceSelector={setDeviceCursor} backend={Backend}/>
                 <button onClick={() => {
                         setDeviceCursor(-1)
                         setDeviceEditModal(true)
                     }}>Add Device</button>
             </div> 
             <div className = "w3-responsive">
-                <DeviceEditModal data={data} setData={setData} modal={deviceEditModal} setModal={setDeviceEditModal} deviceCursor={deviceCursor} backend={Backend} forceUpdate={forceUpdate}/>
+                <DeviceEditModal data={data} setData={setData} modal={deviceEditModal} setModal={setDeviceEditModal} deviceCursor={deviceCursor} backend={Backend}/>
             </div>
             <div className = "w3-responsive">
-                <DeviceTrainingModal devices={data} setDevices={setData} rooms={roomData} setRooms={setRoomData} modal={deviceTrainModal} setModal={setDeviceTrainModal} deviceCursor={deviceCursor} backend={Backend} forceUpdate={forceUpdate} getElementFromId={getElementFromId}/>
+                <DeviceTrainingModal devices={data} setDevices={setData} rooms={roomData} setRooms={setRoomData} modal={deviceTrainModal} setModal={setDeviceTrainModal} deviceCursor={deviceCursor} backend={Backend} getElementFromId={getElementFromId}/>
             </div>
             <h1>Trackers</h1>
             <div className = "w3-responsive">
-                <TrackerTable data={trackerData} setData={setTrackerData} trackerEditModal={setTrackerEditModal} trackerSelector={setTrackerCursor} backend={Backend} forceUpdate={forceUpdate}/>
+                <TrackerTable data={trackerData} setData={setTrackerData} trackerEditModal={setTrackerEditModal} trackerSelector={setTrackerCursor} backend={Backend}/>
                 <button onClick={() => {
                         setTrackerCursor(-1)
                         setTrackerEditModal(true)
                     }}>Add Tracker</button>
             </div>
             <div className = "w3-responsive">
-                <TrackerEditModal data={trackerData} setData={setTrackerData} modal={trackerEditModal} setModal={setTrackerEditModal} trackerCursor={trackerCursor} backend={Backend} forceUpdate={forceUpdate}/>
+                <TrackerEditModal data={trackerData} setData={setTrackerData} modal={trackerEditModal} setModal={setTrackerEditModal} trackerCursor={trackerCursor} backend={Backend}/>
             </div>
             <h1>Sensors</h1>
             <div className = "w3-responsive">
-                <SensorTable data={sensorData} setData={setSensorData} sensorEditModal={setSensorEditModal} sensorSelector={setSensorCursor} backend={Backend} forceUpdate={forceUpdate}/>
+                <SensorTable data={sensorData} setData={setSensorData} sensorEditModal={setSensorEditModal} sensorSelector={setSensorCursor} backend={Backend}/>
                 <button onClick={() => {
                         setSensorCursor(-1)
                         setSensorEditModal(true)
                     }}>Add Sensor</button>
             </div>
             <div className = "w3-responsive">
-                <SensorEditModal data={sensorData} setData={setSensorData} modal={sensorEditModal} setModal={setSensorEditModal} sensorCursor={sensorCursor} backend={Backend} forceUpdate={forceUpdate}/>
+                <SensorEditModal data={sensorData} setData={setSensorData} modal={sensorEditModal} setModal={setSensorEditModal} sensorCursor={sensorCursor} backend={Backend}/>
             </div>
             <h1>Rooms</h1>
             <div className = "w3-responsive">
-                <RoomTable data={roomData} setData={setRoomData} roomEditModal={setRoomEditModal} roomSelector={setRoomCursor} backend={Backend} forceUpdate={forceUpdate}/>
+                <RoomTable data={roomData} setData={setRoomData} roomEditModal={setRoomEditModal} roomSelector={setRoomCursor} backend={Backend}/>
                 <button onClick={() => {
                         setRoomCursor(-1)
                         setRoomEditModal(true)
                     }}>Add Room</button>
             </div>
             <div className = "w3-responsive">
-                <RoomEditModal data={roomData} setData={setRoomData} modal={roomEditModal} setModal={setRoomEditModal} roomCursor={roomCursor} backend={Backend} forceUpdate={forceUpdate}/>
+                <RoomEditModal data={roomData} setData={setRoomData} modal={roomEditModal} setModal={setRoomEditModal} roomCursor={roomCursor} backend={Backend}/>
             </div>
 
         </div>

@@ -4,7 +4,7 @@ import EntityPicker from './EntityPicker';
 
 
 
-const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend, forceUpdate}) => {
+const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend}) => {
 
     const toggleModal = () => {
         setModal(!modal)
@@ -38,7 +38,6 @@ const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend,
                     updatedData.push(sensor);
                     toggleModal();
                     setData(updatedData);
-                    forceUpdate();
                 } else {
                     setEntityIDValid(false);
                     alert("Entity ID does not Exist in Home Assistant");
@@ -58,7 +57,6 @@ const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend,
                     updatedData[sensorCursor] = sensor;
                     toggleModal();
                     setData(updatedData);
-                    forceUpdate();
                 } else {
                     setEntityIDValid(false);
                     alert("Entity ID does not Exist in Home Assistant");

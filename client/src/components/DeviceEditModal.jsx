@@ -4,7 +4,7 @@ import EntityPicker from './EntityPicker';
 
 
 
-const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend, forceUpdate}) => {
+const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend}) => {
 
     const toggleModal = () => {
         setModal(!modal)
@@ -52,7 +52,6 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                         updatedData.push(device);
                         toggleModal();
                         setData(updatedData);
-                        forceUpdate();
                     } else {
                         setEntityIDValid(false);
                         alert("Entity ID does not Exist in Home Assistant");
@@ -70,7 +69,6 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                     updatedData.push(device);
                     toggleModal();
                     setData(updatedData);
-                    forceUpdate();
                 } catch (err) {
                     console.error("Error creating beacon device:", err);
                 }
@@ -89,7 +87,6 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                         updatedData[deviceCursor] = device;
                         toggleModal();
                         setData(updatedData);
-                        forceUpdate();
                     } else {
                         setEntityIDValid(false);
                         alert("Entity ID does not Exist in Home Assistant");
@@ -107,7 +104,6 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                     updatedData[deviceCursor] = device;
                     toggleModal();
                     setData(updatedData);
-                    forceUpdate();
                 } catch (err) {
                     console.error("Error updating beacon device:", err);
                 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 
-const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, deviceTrainModal, backend, forceUpdate}) => {
+const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, deviceTrainModal, backend}) => {
   const [expandedRow, setExpandedRow] = useState(null);
 
   const toggleRow = (rowIndex) => {
@@ -50,7 +50,6 @@ const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, deviceTra
                   const newData = JSON.parse(JSON.stringify(data));
                   newData.splice(index, 1);
                   setData(newData);
-                  forceUpdate();
                   }
                 }>Remove</button>
                 <button onClick={() => {

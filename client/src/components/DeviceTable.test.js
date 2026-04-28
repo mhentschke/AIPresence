@@ -12,7 +12,7 @@ const noopFn = () => {};
 
 test('renders correct column headers', () => {
   render(
-    <DeviceTable data={sampleDevices} setData={noopFn} deviceEditModal={noopFn} deviceTrainModal={noopFn} deviceSelector={noopFn} backend={{}} forceUpdate={noopFn} />
+    <DeviceTable data={sampleDevices} setData={noopFn} deviceEditModal={noopFn} deviceTrainModal={noopFn} deviceSelector={noopFn} backend={{}} />
   );
 
   ['Identifier', 'Name', 'Trained', 'Accuracy', 'Location', 'Confidence', 'Options'].forEach((header) => {
@@ -22,7 +22,7 @@ test('renders correct column headers', () => {
 
 test('renders correct number of data rows', () => {
   render(
-    <DeviceTable data={sampleDevices} setData={noopFn} deviceEditModal={noopFn} deviceTrainModal={noopFn} deviceSelector={noopFn} backend={{}} forceUpdate={noopFn} />
+    <DeviceTable data={sampleDevices} setData={noopFn} deviceEditModal={noopFn} deviceTrainModal={noopFn} deviceSelector={noopFn} backend={{}} />
   );
 
   // thead row + 3 data rows

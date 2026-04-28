@@ -4,7 +4,7 @@ import EntityPicker from './EntityPicker';
 
 
 
-const TrackerEditModal = ({data, setData, modal, setModal, trackerCursor, backend, forceUpdate}) => {
+const TrackerEditModal = ({data, setData, modal, setModal, trackerCursor, backend}) => {
 
     const toggleModal = () => {
         setModal(!modal)
@@ -38,7 +38,6 @@ const TrackerEditModal = ({data, setData, modal, setModal, trackerCursor, backen
                     updatedData.push(tracker);
                     toggleModal();
                     setData(updatedData);
-                    forceUpdate();
                 } else {
                     setEntityIDValid(false);
                     alert("Entity ID does not Exist in Home Assistant");
@@ -58,7 +57,6 @@ const TrackerEditModal = ({data, setData, modal, setModal, trackerCursor, backen
                     updatedData[trackerCursor] = tracker;
                     toggleModal();
                     setData(updatedData);
-                    forceUpdate();
                 } else {
                     setEntityIDValid(false);
                     alert("Entity ID does not Exist in Home Assistant");

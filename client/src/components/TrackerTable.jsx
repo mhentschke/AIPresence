@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 
-const TrackerTable = ({ data, setData, trackerEditModal, trackerSelector, backend, forceUpdate}) => {
+const TrackerTable = ({ data, setData, trackerEditModal, trackerSelector, backend}) => {
   const [expandedRow, setExpandedRow] = useState(null);
 
   const toggleRow = (rowIndex) => {
@@ -35,7 +35,6 @@ const TrackerTable = ({ data, setData, trackerEditModal, trackerSelector, backen
                     newData[index].mobile = !newData[index].mobile;
                     setData(newData);
                     backend.UpdateTracker(newData[index]);
-                    forceUpdate();
                   }
                 }>
                 </input>
@@ -47,7 +46,6 @@ const TrackerTable = ({ data, setData, trackerEditModal, trackerSelector, backen
                     newData[index].whitelist = !newData[index].whitelist;
                     setData(newData);
                     backend.UpdateTracker(newData[index]);
-                    forceUpdate();
                   }
                 }>
                 </input>
@@ -59,7 +57,6 @@ const TrackerTable = ({ data, setData, trackerEditModal, trackerSelector, backen
                     newData[index].blacklist = !newData[index].blacklist;
                     setData(newData);
                     backend.UpdateTracker(newData[index]);
-                    forceUpdate();
                   }
                 }></input>           
               </td>
@@ -69,7 +66,6 @@ const TrackerTable = ({ data, setData, trackerEditModal, trackerSelector, backen
                   const newData = JSON.parse(JSON.stringify(data));
                   newData.splice(index, 1);
                   setData(newData);
-                  forceUpdate();
                   }
                 }>Remove</button>
               </td>

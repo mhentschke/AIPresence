@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-import storage
-from classes import Binary_Sensor
-from dependencies import get_ha_client, get_sensors
-from schemas import SensorResponse
+from .. import storage
+from ..classes import Binary_Sensor
+from ..dependencies import get_ha_client, get_sensors
+from ..schemas import SensorResponse
 
 router = APIRouter()
 
 
-@router.get("/", response_model=list[SensorResponse])
+@router.get("", response_model=list[SensorResponse])
 def list_sensors(sensors: dict = Depends(get_sensors)):
     result = []
     for key, sensor in sensors.items():

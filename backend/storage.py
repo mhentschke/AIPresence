@@ -14,8 +14,8 @@ import pickle
 
 import pandas as pd
 
-import config
-from classes import (
+from . import config
+from .classes import (
     Binary_Sensor,
     Device,
     Model,
@@ -23,7 +23,7 @@ from classes import (
     Room,
     Smartphone_Tracker,
 )
-from schemas import (
+from .schemas import (
     DeviceStorage,
     ModelStatsStorage,
     ModelStorage,

@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-import storage
-from classes import Smartphone_Tracker
-from dependencies import get_ha_client, get_trackers
-from schemas import TrackerCreate, TrackerResponse
+from .. import storage
+from ..classes import Smartphone_Tracker
+from ..dependencies import get_ha_client, get_trackers
+from ..schemas import TrackerCreate, TrackerResponse
 
 router = APIRouter()
 
 
-@router.get("/", response_model=list[TrackerResponse])
+@router.get("", response_model=list[TrackerResponse])
 def list_trackers(trackers: dict = Depends(get_trackers)):
     result = []
     for key, tracker in trackers.items():

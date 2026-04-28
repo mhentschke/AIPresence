@@ -2,15 +2,15 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 
-import storage
-from classes import Room
-from dependencies import get_rooms
-from schemas import RoomCreate, RoomResponse
+from .. import storage
+from ..classes import Room
+from ..dependencies import get_rooms
+from ..schemas import RoomCreate, RoomResponse
 
 router = APIRouter()
 
 
-@router.get("/", response_model=list[RoomResponse])
+@router.get("", response_model=list[RoomResponse])
 def list_rooms(rooms: dict = Depends(get_rooms)):
     result = []
     for key, room in rooms.items():
@@ -20,7 +20,7 @@ def list_rooms(rooms: dict = Depends(get_rooms)):
     return result
 
 
-@router.post("/")
+@router.post("")
 def create_room(body: RoomCreate, rooms: dict = Depends(get_rooms)):
     room_id = str(uuid.uuid4())
     rooms[room_id] = Room(room_id, body.name, body.color)

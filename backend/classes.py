@@ -4,7 +4,7 @@ import pandas as pd
 from dataclasses import dataclass
 import time
 import os
-import config
+from . import config
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB

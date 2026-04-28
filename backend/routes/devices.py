@@ -2,10 +2,10 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 
-import storage
-from classes import Device
-from dependencies import get_data_gatherer, get_devices, get_rooms
-from schemas import (
+from .. import storage
+from ..classes import Device
+from ..dependencies import get_data_gatherer, get_devices, get_rooms
+from ..schemas import (
     DeviceCreate,
     DeviceResponse,
     ModelResponse,
@@ -47,12 +47,12 @@ def _device_to_response(device_id: str, device: Device) -> DeviceResponse:
 # ---------------------------------------------------------------------------
 
 
-@router.get("/", response_model=list[DeviceResponse])
+@router.get("", response_model=list[DeviceResponse])
 def list_devices(devices: dict = Depends(get_devices)):
     return [_device_to_response(k, v) for k, v in devices.items()]
 
 
-@router.post("/")
+@router.post("")
 def create_device(
     body: DeviceCreate,
     devices: dict = Depends(get_devices),

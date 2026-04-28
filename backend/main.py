@@ -7,25 +7,24 @@ from fastapi import Depends, FastAPI, HTTPException
 from homeassistant_api import Client
 from homeassistant_api.errors import EndpointNotFoundError
 
-import storage
-from dependencies import get_ha_client
-from errors import generic_exception_handler, value_error_handler
-from routes.devices import router as devices_router
-from routes.rooms import router as rooms_router
-from routes.sensors import router as sensors_router
-from routes.trackers import router as trackers_router
+from . import storage
+from .dependencies import get_ha_client
+from .errors import generic_exception_handler, value_error_handler
+from .routes.devices import router as devices_router
+from .routes.rooms import router as rooms_router
+from .routes.sensors import router as sensors_router
+from .routes.trackers import router as trackers_router
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    load_dotenv()
+    load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
     client = Client(
         os.environ["HA_URL"],
         os.environ["HA_TOKEN"],
-        cache_session=False,
     )
     app.state.ha_client = client
 

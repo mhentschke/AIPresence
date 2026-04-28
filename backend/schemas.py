@@ -1,8 +1,4 @@
-"""Pydantic request/response/storage models.
-
-Replaces both api_schemas.py (API serialization) and the schema portion
-of storage.py (JSON persistence) with a single set of pydantic models.
-"""
+"""Pydantic request/response models for the API layer."""
 
 from typing import Optional
 
@@ -87,43 +83,4 @@ class RoomResponse(BaseModel):
     color: str
 
 
-# ---------------------------------------------------------------------------
-# Storage Models (JSON file persistence)
-# ---------------------------------------------------------------------------
 
-
-class ModelStatsStorage(BaseModel):
-    accuracy: float
-    model_type: str
-    classification_report: dict
-
-
-class ModelStorage(BaseModel):
-    data_path: str
-    trained_model_stats: ModelStatsStorage
-    trained_columns: list[str]
-
-
-class DeviceStorage(BaseModel):
-    name: str
-    entity_id: Optional[str] = None
-    beacon_id: Optional[str] = None
-    model: Optional[ModelStorage] = None
-
-
-class TrackerStorage(BaseModel):
-    entity_id: str
-    mobile: bool = False
-    whitelist: bool = False
-    blacklist: bool = False
-
-
-class SensorStorage(BaseModel):
-    entity_id: str
-    mobile: bool = False
-
-
-class RoomStorage(BaseModel):
-    id: str
-    name: str
-    color: str = "#ffffffff"

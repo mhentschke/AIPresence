@@ -1,392 +1,241 @@
-function handle_generic_response(response){
-    if (response.status !== 200) {
-        alert("Request to Backend Failed: " + response.status + " " + response.statusText)
-    }
-}
-
-function handle_request_response(response){
-    if (response.status === 200) {
-        console.log("Request to Backend Succeeded: " + response.status + " " + response.statusText)
-        return response.json()
-    }
-    else {
-        alert("Request to Backend Failed: " + response.status + " " + response.statusText + "\n" + response.text())
-        return null
-    }
+async function apiCall(url, options = {}) {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`API error ${response.status}: ${text}`);
+  }
+  return response;
 }
 
 export class Backend {
-    constructor() {
+  // ---- Devices ----
 
+  static async GetDevices() {
+    const resp = await apiCall('/devices');
+    const data = await resp.json();
+    for (let d = 0; d < data.length; d++) {
+      if (data[d].model === null) {
+        data[d].trained = false;
+        data[d].accuracy = "-";
+      } else {
+        data[d].trained = true;
+        data[d].accuracy = data[d].model.trained_model_stats.accuracy;
+      }
+      if (data[d].beacon_id !== undefined) {
+        data[d].identifier = data[d].beacon_id;
+        data[d].type = "Beacon";
+      } else if (data[d].entity_id !== undefined) {
+        data[d].identifier = data[d].entity_id;
+        data[d].type = "Tracker";
+      } else {
+        data[d].identifier = "-";
+        data[d].type = "-";
+      }
+      if (data[d].location === undefined) {
+        data[d].location = "-";
+      }
     }
+    return data;
+  }
 
-    static GetDevices() {
-        // GET on devices
-        return new Promise((resolve, reject) => {
-            fetch('/devices').then(
-                response => response.json()
-            ).then(
-                data => {
-                    for(var d = 0; d < data.length; d++) {
-                        if (data[d].model === null) {
-                            data[d].trained = false
-                            data[d].accuracy = "-"
-                        }
-                        else{
-                            data[d].trained = true
-                            data[d].accuracy = data[d].model.trained_model_stats.accuracy
-                        }
-                        console.log(data[d].entity_id + "  " + data[d].beacon_id)
-                        if (data[d].beacon_id !== undefined) {
-                            data[d].identifier = data[d].beacon_id
-                            data[d].type = "Beacon"                            
-                        }
-                        else if (data[d].entity_id !== undefined) {
-                            data[d].identifier = data[d].entity_id
-                            data[d].type = "Tracker"
-                        }
-                        else {
-                            data[d].identifier = "-"
-                            data[d].type = "-"
-                        }
-                        if (data[d].location === undefined) {
-                            data[d].location = "-"
-                        }
-                    }
-                    resolve(data)
-                }
-            )
-        })
-    }
+  static async CheckEntityId(entityId) {
+    const response = await fetch('/device/check_entity_id/' + entityId);
+    return response.status === 200;
+  }
 
-    static CheckEntityId(entityId) {
-        // GET on entities/:id
-        return new Promise((resolve, reject) => {
-            fetch('/device/check_entity_id/' + entityId).then(
-                response => {
-                    if (response.status === 200) {
-                        resolve(true)
-                    }
-                    else {
-                        resolve(false)
-                    }
-                }
-            )
-        })
-    }
-    
-    static UpdateDevice(device) {
-        // PUT on devices/:id
-        console.log("Device being updated:")
-        console.log(device)
-        if (device.id === undefined) {
-            alert("Device ID is undefined")
-        }
-        else {
-            fetch('/devices/' + device.id, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(device),
-            })
-            .then(response => handle_generic_response)
-        }
-    }
+  static async CreateDevice(device) {
+    const resp = await apiCall('/devices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(device),
+    });
+    return resp.json();
+  }
 
-    static CreateDevice(device) {
-        // POST on devices
-        fetch('/devices', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(device),
-        })
-        .then(response => handle_generic_response)
-    }
+  static async UpdateDevice(device) {
+    const resp = await apiCall('/devices/' + device.id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(device),
+    });
+    return resp.json();
+  }
 
-    static RemoveDevice(device) {
-        // DELETE on devices/:id
-        console.log("Device being updated:")
-        console.log(device)
-        if (device.id === undefined) {
-            alert("Device ID is undefined")
-        }
-        else {
-            fetch('/devices/' + device.id, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            })
-            .then(response => handle_generic_response)
-        }
-    }
+  static async RemoveDevice(device) {
+    const resp = await apiCall('/devices/' + device.id, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return resp.json();
+  }
 
-    static GetDeviceLocations() {
-        // GET on device_locations
-        return new Promise((resolve, reject) => {
-            fetch('/devices/location').then(
-                response => response.json()
-            ).then(
-                data => {
-                    resolve(data)
-                }
-            )
-        })
-    }
+  static async GetDeviceLocations() {
+    const resp = await apiCall('/devices/location');
+    return resp.json();
+  }
 
-    static GetDeviceLocation(device_id) {
-        // GET on devices/:id/location
-        return new Promise((resolve, reject) => {
-            fetch('/devices/' + device_id + '/location').then(
-                response => {
-                    if (response.status === 200) {
-                        resolve(response.json())
-                    }
-                    else {
-                        console.log("Location Request Failed: " + response.status + " " + response.statusText)
-                        resolve(null)
-                    }
-                }
-            )
-        })
+  static async GetDeviceLocation(device_id) {
+    const response = await fetch('/devices/' + device_id + '/location');
+    if (response.ok) {
+      return response.json();
     }
+    return null;
+  }
 
-    static GetTrackers() {
-        // GET on trackers
-        return new Promise((resolve, reject) => {
-            fetch('/trackers').then(
-                response => response.json()
-            ).then(
-                data => {
-                    for(var d = 0; d < data.length; d++) {
-                        if (data[d].whitelist === null) {
-                            data[d].whitelist = false
-                        }
-                        if (data[d].blacklist === null) {
-                            data[d].blacklist = false
-                        }
-                    }
-                    resolve(data)
-                }
-            )
-        })
-    }
+  // ---- Trackers ----
 
-    static UpdateTracker(tracker) {
-        // PUT on trackers/:id
-        console.log("Tracker being updated:")
-        console.log(tracker)
-        if (tracker.id === undefined) {
-            alert("Tracker ID is undefined")
-        }
-        else {
-            fetch('/trackers/' + tracker.id, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(tracker),
-            })
-            .then(response => handle_generic_response)
-        }
+  static async GetTrackers() {
+    const resp = await apiCall('/trackers');
+    const data = await resp.json();
+    for (let d = 0; d < data.length; d++) {
+      if (data[d].whitelist === null) {
+        data[d].whitelist = false;
+      }
+      if (data[d].blacklist === null) {
+        data[d].blacklist = false;
+      }
     }
+    return data;
+  }
 
-    static CreateTracker(tracker) {
-        // POST on trackers
-        fetch('/trackers/'+tracker.entity_id, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(tracker),
-        })
-        .then(response => handle_generic_response)
-    }
+  static async CreateTracker(tracker) {
+    const resp = await apiCall('/trackers/' + tracker.entity_id, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tracker),
+    });
+    return resp.json();
+  }
 
-    static RemoveTracker(tracker) {
-        // DELETE on trackers/:id
-        console.log("Tracker being updated:")
-        console.log(tracker)
-        if (tracker.id === undefined) {
-            alert("Tracker ID is undefined")
-        }
-        else {
-            fetch('/trackers/' + tracker.id, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            })
-            .then(response => handle_generic_response)
-        }
-    }
+  static async UpdateTracker(tracker) {
+    const resp = await apiCall('/trackers/' + tracker.id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tracker),
+    });
+    return resp.json();
+  }
 
-    static GetSensors() {
-        // GET on sensors
-        return new Promise((resolve, reject) => {
-            fetch('/sensors').then(
-                response => response.json()
-            ).then(
-                data => {
-                    resolve(data)
-                }
-            )
-        })
-    }
+  static async RemoveTracker(tracker) {
+    const resp = await apiCall('/trackers/' + tracker.id, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return resp.json();
+  }
 
-    static CreateSensor(sensor) {
-        // POST on sensors
-        fetch('/sensors/' + sensor.entity_id, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(sensor),
-        })
-        .then(response => handle_generic_response)
-    }
+  // ---- Sensors ----
 
-    static RemoveSensor(sensor) {
-        // DELETE on sensors/:id
-        console.log("Sensor being updated:")
-        console.log(sensor)
-        if (sensor.id === undefined) {
-            alert("Sensor ID is undefined")
-        }
-        else {
-            fetch('/sensors/' + sensor.id, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            })
-            .then(response => handle_generic_response)
-        }
-    }
+  static async GetSensors() {
+    const resp = await apiCall('/sensors');
+    return resp.json();
+  }
 
-    static GetRooms() {
-        // GET on rooms
-        return new Promise((resolve, reject) => {
-            fetch('/rooms').then(
-                response => response.json()
-            ).then(
-                data => {
-                    resolve(data)
-                }
-            )
-        })
-    }
+  static async CreateSensor(sensor) {
+    const resp = await apiCall('/sensors/' + sensor.entity_id, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sensor),
+    });
+    return resp.json();
+  }
 
-    static UpdateRoom(room) {
-        // PUT on rooms/:id
-        console.log("Room being updated:")
-        console.log(room)
-        if (room.id === undefined) {
-            alert("Room ID is undefined")
-        }
-        else {
-            fetch('/rooms/' + room.id, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(room),
-            })
-            .then(response => handle_generic_response)
-        }
-    }
+  static async UpdateSensor(sensor) {
+    const resp = await apiCall('/sensors/' + sensor.entity_id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mobile: sensor.mobile }),
+    });
+    return resp.json();
+  }
 
-    static CreateRoom(room) {
-        // POST on rooms
-        fetch('/rooms', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(room),
-        })
-        .then(response => handle_generic_response)
-    }
+  static async RemoveSensor(sensor) {
+    const resp = await apiCall('/sensors/' + sensor.id, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return resp.json();
+  }
 
-    static RemoveRoom(room) {
-        // DELETE on rooms/:id
-        console.log("Room being updated:")
-        console.log(room)
-        if (room.id === undefined) {
-            alert("Room ID is undefined")
-        }
-        else {
-            fetch('/rooms/' + room.id, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            })
-            .then(response => handle_generic_response)
-        }
-    }
+  // ---- Rooms ----
 
-    static GetTrainingProgress(device_id) {
-        // GET on devices/:id/model/training_progress
-        return new Promise((resolve, reject) => {
-            fetch('/devices/' + device_id + '/model/training_progress').then(
-                response => {
-                    if (response.status === 200) {
-                        resolve(response.json())
-                    }
-                    else {
-                        console.log("Training Progress Request Failed: " + response.status + " " + response.statusText)
-                        resolve(null)
-                    }
-                }
-            )
-        })
-    }
+  static async GetRooms() {
+    const resp = await apiCall('/rooms');
+    return resp.json();
+  }
 
-    static StartTraining(device_id, room_id, overwrite) {
-        // POST on devices/:id/model/train
-        fetch('/devices/' + device_id + '/model/start_training', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({room: room_id, append: !overwrite}),
-        })
-        .then(response => handle_generic_response)
-    }
+  static async CreateRoom(room) {
+    const resp = await apiCall('/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(room),
+    });
+    return resp.json();
+  }
 
-    static StopTraining(device_id) {
-        // GET on devices/:id/model/stop_training
-        fetch('/devices/' + device_id + '/model/stop_training', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-        .then(response => handle_generic_response)
-    }
+  static async UpdateRoom(room) {
+    const resp = await apiCall('/rooms/' + room.id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(room),
+    });
+    return resp.json();
+  }
 
-    static CancelTraining(device_id) {
-        // GET on devices/:id/model/cancel_training
-        fetch('/devices/' + device_id + '/model/cancel_training', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-        .then(response => handle_generic_response)
-    }
+  static async RemoveRoom(room) {
+    const resp = await apiCall('/rooms/' + room.id, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return resp.json();
+  }
 
-    static ChangeRoom(device_id, room_id) {
-        // POST on devices/:id/model/set_room/:room_id
-        fetch('/devices/' + device_id + '/model/set_room/' + room_id, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
+  // ---- Training ----
+
+  static async GetTrainingProgress(device_id) {
+    const response = await fetch('/devices/' + device_id + '/model/training_progress');
+    if (response.ok) {
+      return response.json();
     }
+    return null;
+  }
+
+  static async StartTraining(device_id, room_id, overwrite) {
+    const resp = await apiCall('/devices/' + device_id + '/model/start_training', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ room: room_id, append: !overwrite }),
+    });
+    return resp.json();
+  }
+
+  static async StopTraining(device_id) {
+    const resp = await apiCall('/devices/' + device_id + '/model/stop_training');
+    return resp.json();
+  }
+
+  static async CancelTraining(device_id) {
+    const resp = await apiCall('/devices/' + device_id + '/model/cancel_training');
+    return resp.json();
+  }
+
+  static async ChangeRoom(device_id, room_id) {
+    const resp = await apiCall('/devices/' + device_id + '/model/set_room/' + room_id, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return resp.json();
+  }
+
+  // ---- Home Assistant Entities ----
+
+  static async GetHAEntities(domain) {
+    const url = domain ? `/ha/entities?domain=${domain}` : '/ha/entities';
+    const response = await fetch(url);
+    if (response.status === 503) return null;
+    if (!response.ok) {
+      throw new Error(`API error ${response.status}`);
+    }
+    return response.json();
+  }
 }

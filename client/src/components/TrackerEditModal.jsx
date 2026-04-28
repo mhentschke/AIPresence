@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import "./Modal.css"
+import EntityPicker from './EntityPicker';
 
 
 
@@ -67,17 +68,16 @@ const TrackerEditModal = ({data, setData, modal, setModal, trackerCursor, backen
             <div className="modal-content">
                 {trackerCursor>=0 && (<h2>Edit Tracker</h2>)}
                 {trackerCursor<0 && (<h2>Add Tracker</h2>)}
-                <label>Entity ID {" " + entityIDValid}</label>
-                <input
-                    type="text"
-                    value={entityId }
-                    onChange={
-                        (e) => {
-                            setEntityId(e.target.value);
-                            backend.CheckEntityId(e.target.value).then((result) => {
-                                setEntityIDValid(result);
-                            });
+                <EntityPicker
+                    domain="device_tracker"
+                    value={entityId}
+                    onChange={(val) => {
+                        setEntityId(val);
+                        backend.CheckEntityId(val).then((result) => {
+                            setEntityIDValid(result);
+                        });
                     }}
+                    label={"Entity ID " + entityIDValid}
                 />
                 <p></p>
                 <button onClick={handleSave}>Save</button>

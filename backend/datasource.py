@@ -66,9 +66,9 @@ class HADataSource:
     def list_entities(self, domain: str | None = None) -> list[dict[str, str]]:
         groups = self.client.get_entities()
         result: list[dict[str, str]] = []
-        domains = [domain] if domain else list(vars(groups).keys())
+        domains = [domain] if domain else list(groups.keys())
         for d in domains:
-            group = getattr(groups, d, None)
+            group = groups.get(d)
             if group is None:
                 continue
             for eid, entity in group.entities.items():

@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import "./Modal.css"
+import EntityPicker from './EntityPicker';
 
 
 
@@ -98,25 +99,31 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
             <div className="modal-content">
                 {deviceCursor>=0 && (<h2>Edit Device</h2>)}
                 {deviceCursor<0 && (<h2>Add Device</h2>)}
-                <label>Identifier {" " + entityIDValid}</label>
-                <input
-                    type="text"
-                    defaultValue={(deviceCursor >= 0)?data[deviceCursor].entity_id:"Identifier"}
-                    onChange={
-                        (e) => {
-                            setEntityId(e.target.value);
-                            if (type === "Tracker")
-                            {
-                                backend.CheckEntityId(e.target.value).then((result) => {
-                                    setEntityIDValid(result);
-                                });
-                            }
-                            else if (type === "Beacon")
-                            {
+                {type === "Tracker" ? (
+                    <EntityPicker
+                        domain="device_tracker"
+                        value={entityId}
+                        onChange={(val) => {
+                            setEntityId(val);
+                            backend.CheckEntityId(val).then((result) => {
+                                setEntityIDValid(result);
+                            });
+                        }}
+                        label={"Identifier " + entityIDValid}
+                    />
+                ) : (
+                    <>
+                        <label>{"Identifier " + entityIDValid}</label>
+                        <input
+                            type="text"
+                            value={entityId}
+                            onChange={(e) => {
+                                setEntityId(e.target.value);
                                 setEntityIDValid(true);
-                            }
-                    }}
-                />
+                            }}
+                        />
+                    </>
+                )}
                 <p></p>
                 <label>Name</label>
                 <input

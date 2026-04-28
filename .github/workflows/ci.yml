@@ -28,7 +28,7 @@ jobs:
         run: |
           python -m venv backend/.venv
           source backend/.venv/bin/activate
-          pip install fastapi uvicorn[standard] pydantic python-dotenv homeassistant_api scikit-learn pandas pytest httpx
+          pip install fastapi uvicorn[standard] pydantic pydantic-settings python-dotenv homeassistant_api scikit-learn pandas pytest httpx
       - name: Run tests
         run: |
           source backend/.venv/bin/activate
@@ -43,7 +43,7 @@ jobs:
           node-version: "18"
       - run: npm ci
         working-directory: client
-      - run: npx eslint src/ --max-warnings=999
+      - run: npx eslint src/
         working-directory: client
 
   test-frontend:

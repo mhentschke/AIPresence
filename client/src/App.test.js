@@ -30,10 +30,10 @@ test('renders Devices, Trackers, Sensors, and Rooms headings', async () => {
 
   await waitFor(() => {
     expect(screen.getByText('Devices')).toBeInTheDocument();
-    expect(screen.getByText('Trackers')).toBeInTheDocument();
-    expect(screen.getByText('Sensors')).toBeInTheDocument();
-    expect(screen.getByText('Rooms')).toBeInTheDocument();
   });
+  expect(screen.getByText('Trackers')).toBeInTheDocument();
+  expect(screen.getByText('Sensors')).toBeInTheDocument();
+  expect(screen.getByText('Rooms')).toBeInTheDocument();
 });
 
 test('calls Backend API methods on mount', async () => {
@@ -41,8 +41,8 @@ test('calls Backend API methods on mount', async () => {
 
   await waitFor(() => {
     expect(Backend.GetDevices).toHaveBeenCalledTimes(1);
-    expect(Backend.GetTrackers).toHaveBeenCalledTimes(1);
-    expect(Backend.GetSensors).toHaveBeenCalledTimes(1);
-    expect(Backend.GetRooms).toHaveBeenCalledTimes(1);
   });
+  expect(Backend.GetTrackers).toHaveBeenCalledTimes(1);
+  expect(Backend.GetSensors).toHaveBeenCalledTimes(1);
+  expect(Backend.GetRooms).toHaveBeenCalledTimes(1);
 });

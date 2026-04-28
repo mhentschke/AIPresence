@@ -6,7 +6,6 @@ import pytest
 
 from backend.classes import Model, Model_Stats, append_to_dataframe
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

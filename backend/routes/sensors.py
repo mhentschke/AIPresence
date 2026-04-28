@@ -33,7 +33,7 @@ def create_sensor(
             status_code=409,
             detail="Already exists. To overwrite, please use the PUT method",
         )
-    sensors[entity_id] = Binary_Sensor(entity_id, ha_client=client)
+    sensors[entity_id] = Binary_Sensor(entity_id, data_source=client)
     repo.save_sensor(entity_id, False)
     return {"detail": "Success"}
 

@@ -38,7 +38,7 @@ def create_tracker(
         )
     trackers[entity_id] = Smartphone_Tracker(
         entity_id,
-        ha_client=client,
+        data_source=client,
         mobile=body.mobile,
         whitelist=body.whitelist,
         blacklist=body.blacklist,
@@ -59,7 +59,7 @@ def update_tracker(
         raise HTTPException(status_code=404, detail="Entity not found")
     trackers[entity_id] = Smartphone_Tracker(
         entity_id,
-        ha_client=client,
+        data_source=client,
         mobile=body.mobile,
         whitelist=body.whitelist,
         blacklist=body.blacklist,

@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI):
     for k, v in repo.load_all_trackers().items():
         app.state.trackers[k] = Smartphone_Tracker(
             entity_id=v["entity_id"],
-            ha_client=client,
+            data_source=client,
             mobile=v["mobile"],
             whitelist=v["whitelist"],
             blacklist=v["blacklist"],
@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
     app.state.sensors = {}
     for k, v in repo.load_all_sensors().items():
         app.state.sensors[k] = Binary_Sensor(
-            entity_id=v["entity_id"], ha_client=client, mobile=v["mobile"]
+            entity_id=v["entity_id"], data_source=client, mobile=v["mobile"]
         )
 
     # Build the data gatherer closure now that trackers & sensors are loaded.

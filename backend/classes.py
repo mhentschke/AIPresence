@@ -1,3 +1,4 @@
+import logging
 import threading
 import re
 import pandas as pd
@@ -10,6 +11,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, recall_score, classification_report
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -24,7 +27,7 @@ def append_to_dataframe(dataframe, data, include_new_columns=False):
         #data_df = data_df[data_df.columns.difference(dataframe.columns)]
         data_df.drop(columns=[col for col in data_df if col not in dataframe.columns], inplace=True)
     
-    print(data_df.head())
+    logger.debug("Appending data row:\n%s", data_df.head())
     dataframe = pd.concat([dataframe, data_df], ignore_index=True)
     return dataframe
 
@@ -66,8 +69,7 @@ class Model(object):
     def stop_recording(self):
         self.stop_recording_flag = True
         self.recording_thread.join()
-        print(self.data)
-        #self.data.to_csv(self.data_filepath, index=False)
+        logger.debug("Recording stopped. Data shape: %s", self.data.shape)
         self.recording_thread = None
         self.trained_model, self.trained_model_stats = self.train()
     def train(self):
@@ -102,7 +104,6 @@ class Model(object):
 
     def apply_scaler(self, data, fit = False, output_dataframe = True):
         # keep data columns to add them back to scaler output
-        #print("Data before scaling:", data)
         data_columns = data.columns
         if fit:
             self.scaler = MinMaxScaler()
@@ -110,7 +111,6 @@ class Model(object):
         data = self.scaler.transform(data)
         if output_dataframe:
             data = pd.DataFrame(data, columns=data_columns)
-        #print("Data after scaling:", data)
         return data
 
     def data_prep_prediction(self, df):
@@ -154,7 +154,7 @@ class Model(object):
                 self.data = append_to_dataframe(self.data, data_row, include_new_columns=True)
                 time.sleep(1/config.SAMPLE_RATE)
             except Exception as e:
-                print("Exception in recording loop:", e)
+                logger.warning("Exception in recording loop: %s", e)
     
     def set_room(self, room):
         self.current_room = room
@@ -164,10 +164,9 @@ class Model(object):
         if not self.data.empty and "room" in self.data.columns:
             result = self.data.groupby('room').size().reset_index(name='counts')
             result['percentage'] = result['counts'] / config.MINIMUM_TRAINING_SAMPLES
-            #print("Result with percentages: \n", result)
             # max percentage is 1
             result['percentage'] = result['percentage'].apply(lambda x: min(x, 1))
-            print("Result with percentages capped at 1: \n", result)
+            logger.debug("Training progress:\n%s", result)
             result = result.to_dict(orient='records')
             result_dict = {}
             for r in result:
@@ -180,14 +179,10 @@ class Model(object):
         if self.trained_model is not None:
             data = self.data_gatherer()
             raw_data = pd.DataFrame(data, index = [0])
-            #print ("Raw Data:", raw_data)
-            #print ("Raw Training Data:", self.data)
             data = self.data_prep_prediction(raw_data)
             data = self.apply_scaler(data)
-            #print ("Preprocessed Data:", data)
             prediction = self.trained_model.predict_proba(data)
             prediction_dict = {}
-            #print("Prediction:", prediction, "Columns:", self.trained_columns)
             best_prediction = 0
             best_prediction_room = ""
             for c, index in zip(self.trained_columns, range(len(self.trained_columns))): 
@@ -242,8 +237,6 @@ class Device(object):
 
     def start_training(self, room, append = False):
         self.training = True
-        #if self.model is not None:
-        #    self.backup_model = self.model
         id = self.entity_id if self.entity_id is not None else self.beacon_id
         if self.model is None:
             self.model = Model(id, data_gatherer=self.data_gatherer)
@@ -277,18 +270,19 @@ class Device(object):
 
     
 class Sensor(object):
-    def __init__(self, entity_id, ha_client = None, mobile = False):
+    def __init__(self, entity_id, data_source = None, mobile = False):
         self.entity_id = entity_id
         self.mobile = mobile
-        self.ha_client = ha_client
+        self.data_source = data_source
     
     def __repr__(self):
-        return ("Sensor(entity_id={}, mobile={}, ha_client={})").format(self.entity_id, self.mobile, self.ha_client)
+        return ("Sensor(entity_id={}, mobile={}, data_source={})").format(self.entity_id, self.mobile, self.data_source)
     def get_data(self):
-        if self.ha_client is not None:
-            return self.parse_state(self.ha_client.get_entity(entity_id = self.entity_id).get_state())
+        if self.data_source is not None:
+            state = self.data_source.get_entity_state(self.entity_id)
+            return self.parse_state(state)
         else:
-            raise AttributeError("No HA client specified")
+            raise AttributeError("No data source specified")
 
     def parse_state(self, state):
         raise NotImplementedError
@@ -299,8 +293,8 @@ class Binary_Sensor(Sensor):
 
 
 class Smartphone_Tracker(Sensor):
-    def __init__(self, entity_id, ha_client = None, mobile = False, whitelist = False, blacklist = False):
-        super().__init__(entity_id, ha_client, mobile)
+    def __init__(self, entity_id, data_source = None, mobile = False, whitelist = False, blacklist = False):
+        super().__init__(entity_id, data_source, mobile)
         self.whitelist = whitelist
         self.blacklist = blacklist
     def parse_state(self, state):

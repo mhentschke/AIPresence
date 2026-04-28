@@ -40,6 +40,11 @@ MIGRATIONS: dict[int, str] = {
             trained_columns TEXT NOT NULL
         );
     """,
+    2: """
+        CREATE TABLE IF NOT EXISTS beacon_monitors (
+            entity_id TEXT PRIMARY KEY
+        );
+    """,
 }
 
 
@@ -146,6 +151,25 @@ class SQLiteRepository:
             }
             for row in rows
         }
+
+    # ------------------------------------------------------------------
+    # Beacon Monitors
+    # ------------------------------------------------------------------
+
+    def save_beacon_monitor(self, entity_id: str) -> None:
+        self.conn.execute(
+            "INSERT OR REPLACE INTO beacon_monitors (entity_id) VALUES (?)",
+            (entity_id,),
+        )
+        self.conn.commit()
+
+    def delete_beacon_monitor(self, entity_id: str) -> None:
+        self.conn.execute("DELETE FROM beacon_monitors WHERE entity_id = ?", (entity_id,))
+        self.conn.commit()
+
+    def load_all_beacon_monitors(self) -> dict[str, dict]:
+        rows = self.conn.execute("SELECT entity_id FROM beacon_monitors").fetchall()
+        return {row["entity_id"]: {"entity_id": row["entity_id"]} for row in rows}
 
     # ------------------------------------------------------------------
     # Devices

@@ -83,13 +83,38 @@ class Model(object):
         self.trained_model, self.trained_model_stats = self.train()
 
     def train(self):
+        if self.data.empty or "room" not in self.data.columns:
+            logger.warning("Training aborted: no data collected")
+            return None, None
+
+        n_rooms = self.data["room"].nunique()
+        if n_rooms < 2:
+            logger.warning(
+                "Training aborted: need at least 2 rooms, got %d. Data is preserved for next session.",
+                n_rooms,
+            )
+            return None, None
+
         X, Y = self.data_prep(self.data.copy(deep=True))
+
+        if X.empty or Y.empty:
+            logger.warning("Training aborted: no usable feature columns after data prep")
+            return None, None
+
         self.trained_columns = list(Y.columns)
+
+        # Need enough samples per class for a train/test split
+        min_samples = Y.sum().min()  # one-hot encoded, so sum = count per room
+        if min_samples < 2:
+            logger.warning(
+                "Training aborted: need at least 2 samples per room, smallest room has %d",
+                int(min_samples),
+            )
+            return None, None
+
         X = self.apply_scaler(X, fit=True)
-        # Split data into train and test sets
         X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
         classifiers = [RandomForestClassifier(n_estimators=100, random_state=42)]
-        # classifiers = [GaussianNB()]
         best_acc = 0
         best_model_type = ""
         best_model_stats = None
@@ -106,13 +131,6 @@ class Model(object):
                 best_model = c
         return best_model, Model_Stats(best_model_type, best_model_stats, best_acc)
 
-        return None, {
-            "accuracy": 0.0,
-            "model_type": "",
-            "classification_report": {"precision": 0.0, "recall": 0.0, "f1_score": 0.0, "support": 0.0},
-        }
-        # raise NotImplementedError()
-
     def retrain(self):
         self.trained_model, self.trained_model_stats = self.train()
 
@@ -127,6 +145,22 @@ class Model(object):
             data = pd.DataFrame(data, columns=data_columns)
         return data
 
+    @staticmethod
+    def _coerce_numeric(df, exclude_cols=None):
+        """Convert all columns to numeric where possible, drop non-convertible ones."""
+        exclude_cols = set(exclude_cols or [])
+        for col in df.columns:
+            if col in exclude_cols:
+                continue
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        # Drop columns that are entirely NaN after coercion (were non-numeric)
+        feature_cols = [c for c in df.columns if c not in exclude_cols]
+        all_nan = [c for c in feature_cols if df[c].isna().all()]
+        if all_nan:
+            logger.warning("Dropping non-numeric columns: %s", all_nan)
+            df.drop(columns=all_nan, inplace=True)
+        return df
+
     def data_prep_prediction(self, df):
         # df needs to have same columns as self.data
         # if df has more columns, drop them
@@ -136,11 +170,15 @@ class Model(object):
         # drop columns [room, Unnamed: 0]
         if "room" in df.columns:
             df.drop(["room"], axis=1, inplace=True)
-        df.fillna(df.max(), inplace=True)
+        df = self._coerce_numeric(df)
+        numeric_max = df.max()
+        df.fillna(numeric_max, inplace=True)
         return df
 
     def data_prep(self, df):
-        df.fillna(df.max(), inplace=True)
+        df = self._coerce_numeric(df, exclude_cols=["room"])
+        numeric_max = df.drop(columns=["room"], errors="ignore").max()
+        df.fillna(numeric_max, inplace=True)
         g = df.groupby("room")
         df_resampled = g.apply(lambda x: x.sample(g.size().min()).reset_index(drop=True))
         # pandas 3.x moves the groupby key into a MultiIndex; reset to get "room" back as a column
@@ -195,23 +233,28 @@ class Model(object):
 
     def predict(self):
         if self.trained_model is not None:
-            data = self.data_gatherer()
-            raw_data = pd.DataFrame(data, index=[0])
-            data = self.data_prep_prediction(raw_data)
-            data = self.apply_scaler(data)
-            prediction = self.trained_model.predict_proba(data)
-            prediction_dict = {}
-            best_prediction = 0
-            best_prediction_room = ""
-            for c, index in zip(self.trained_columns, range(len(self.trained_columns))):
-                p = prediction[index][0][1]  # probability of being in room c TODO: check if this is correct
-                prediction_dict[c] = p
-                if p > best_prediction:
-                    best_prediction = p
-                    best_prediction_room = c
-            prediction_dict["room"] = best_prediction_room.lstrip("room_")
-            prediction_dict["confidence"] = best_prediction
-            return prediction_dict
+            try:
+                data = self.data_gatherer()
+                raw_data = pd.DataFrame(data, index=[0])
+                data = self.data_prep_prediction(raw_data)
+                data = self.apply_scaler(data)
+                prediction = self.trained_model.predict_proba(data)
+                prediction_dict = {}
+                best_prediction = 0
+                best_prediction_room = ""
+                for c, index in zip(self.trained_columns, range(len(self.trained_columns))):
+                    p = prediction[index][0][1]  # probability of being in room c
+                    prediction_dict[c] = p
+                    if p > best_prediction:
+                        best_prediction = p
+                        best_prediction_room = c
+                # Use removeprefix instead of lstrip to correctly strip "room_" prefix
+                prediction_dict["room"] = best_prediction_room.removeprefix("room_")
+                prediction_dict["confidence"] = best_prediction
+                return prediction_dict
+            except Exception as e:
+                logger.error("Prediction failed: %s", e, exc_info=True)
+                return None
         else:
             return None
 
@@ -244,14 +287,13 @@ class Model_Stats(object):
 class Device(object):
     def __init__(self, name, entity_id=None, beacon_id=None, model=None, data_gatherer=None):
         if entity_id is None and beacon_id is None:
-            raise ValueError("Either entity_id or beacon_id must be specified")
-        elif beacon_id is not None and entity_id is not None:
-            raise ValueError("Only one of entity_id or beacon_id can be specified")
+            raise ValueError("At least one of entity_id or beacon_id must be specified")
         self.entity_id = entity_id
         self.beacon_id = beacon_id
 
         self.name = name
         self.model = model
+        self.new_model = None
         self.training = False
         self.data_gatherer = data_gatherer
 
@@ -328,6 +370,30 @@ class Smartphone_Tracker(Sensor):
         attr = {k: v for k, v in state.attributes.items() if not re.match("icon", k)}
         attr = {k: v for k, v in attr.items() if not re.match("friendly_name", k)}
         return attr
+
+
+# Metadata attribute keys to exclude from beacon monitor data
+_BEACON_MONITOR_META_KEYS = frozenset(
+    {"options", "device_class", "icon", "friendly_name", "unit_of_measurement", "state_class"}
+)
+
+
+class BeaconMonitor(Sensor):
+    """A sensor entity that reports BLE beacon distances/RSSI as attributes.
+
+    Each attribute is keyed by beacon ID (uuid_major_minor) with a numeric value.
+    Metadata attributes are filtered out, and only numeric values are kept.
+    """
+
+    def parse_state(self, state):
+        result = {}
+        for key, value in state.attributes.items():
+            if key in _BEACON_MONITOR_META_KEYS:
+                continue
+            # Only keep numeric values (RSSI or distance)
+            if isinstance(value, (int, float)):
+                result[key] = value
+        return result
 
 
 @dataclass(repr=True)

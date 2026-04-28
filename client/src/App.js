@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import DeviceTable from './components/DeviceTable'
 import DeviceEditModal from './components/DeviceEditModal'
 import DeviceTrainingModal from './components/DeviceTrainingModal'
-import TrackerTable from './components/TrackerTable'
-import TrackerEditModal from './components/TrackerEditModal'
+import MonitorTable from './components/MonitorTable'
+import MonitorEditModal from './components/MonitorEditModal'
 import SensorTable from './components/SensorTable'
 import SensorEditModal from './components/SensorEditModal'
 import RoomTable from './components/RoomTable'
@@ -25,9 +25,10 @@ function App() {
     const [deviceEditModal, setDeviceEditModal] = useState(false)
     const [deviceTrainModal, setDeviceTrainModal] = useState(false)
     const [deviceCursor, setDeviceCursor] = useState({})
-    const [trackerData, setTrackerData] = useState([{}])
+    const [trackerData, setTrackerData] = useState([])
     const [trackerEditModal, setTrackerEditModal] = useState(false)
-    const [trackerCursor, setTrackerCursor] = useState({})
+    const [monitorData, setMonitorData] = useState([])
+    const [monitorEditModal, setMonitorEditModal] = useState(false)
     const [sensorData, setSensorData] = useState([{}])
     const [sensorEditModal, setSensorEditModal] = useState(false)
     const [sensorCursor, setSensorCursor] = useState({})
@@ -56,6 +57,12 @@ function App() {
                 console.log(data)
             }
         )
+        Backend.GetBeaconMonitors().then(
+            data => {
+                setMonitorData(data)
+                console.log(data)
+            }
+        )
         Backend.GetSensors().then(
             data => {
                 setSensorData(data)
@@ -71,7 +78,7 @@ function App() {
     }, [])
 
     useEffect(() => {
-        const anyModalOpen = deviceEditModal || deviceTrainModal || trackerEditModal || sensorEditModal || roomEditModal;
+        const anyModalOpen = deviceEditModal || deviceTrainModal || trackerEditModal || monitorEditModal || sensorEditModal || roomEditModal;
 
         if (!anyModalOpen) {
             intervalRef.current = setInterval(() => {
@@ -106,7 +113,7 @@ function App() {
             clearInterval(intervalRef.current);
             intervalRef.current = undefined;
         };
-    }, [deviceEditModal, deviceTrainModal, trackerEditModal, sensorEditModal, roomEditModal]);
+    }, [deviceEditModal, deviceTrainModal, trackerEditModal, monitorEditModal, sensorEditModal, roomEditModal]);
 
     return (
         <div>
@@ -126,14 +133,17 @@ function App() {
             </div>
             <h1>Trackers</h1>
             <div className = "w3-responsive">
-                <TrackerTable data={trackerData} setData={setTrackerData} trackerEditModal={setTrackerEditModal} trackerSelector={setTrackerCursor} backend={Backend}/>
+                <p><em>Legacy — use Monitors below for BLE beacon tracking.</em></p>
+            </div>
+            <h1>Monitors</h1>
+            <div className = "w3-responsive">
+                <MonitorTable data={monitorData} setData={setMonitorData} monitorEditModal={setMonitorEditModal} backend={Backend}/>
                 <button onClick={() => {
-                        setTrackerCursor(-1)
-                        setTrackerEditModal(true)
-                    }}>Add Tracker</button>
+                        setMonitorEditModal(true)
+                    }}>Add Monitor</button>
             </div>
             <div className = "w3-responsive">
-                <TrackerEditModal data={trackerData} setData={setTrackerData} modal={trackerEditModal} setModal={setTrackerEditModal} trackerCursor={trackerCursor} backend={Backend}/>
+                <MonitorEditModal data={monitorData} setData={setMonitorData} modal={monitorEditModal} setModal={setMonitorEditModal} backend={Backend}/>
             </div>
             <h1>Sensors</h1>
             <div className = "w3-responsive">

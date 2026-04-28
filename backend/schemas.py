@@ -20,11 +20,9 @@ class DeviceCreate(BaseModel):
     beacon_id: Optional[str] = None
 
     @model_validator(mode="after")
-    def _exactly_one_id(self) -> "DeviceCreate":
+    def _at_least_one_id(self) -> "DeviceCreate":
         if self.entity_id is None and self.beacon_id is None:
-            raise ValueError("Either entity_id or beacon_id must be specified")
-        if self.entity_id is not None and self.beacon_id is not None:
-            raise ValueError("Only one of entity_id or beacon_id can be specified")
+            raise ValueError("At least one of entity_id or beacon_id must be specified")
         return self
 
 
@@ -78,6 +76,11 @@ class SensorResponse(BaseModel):
     id: str
     entity_id: str
     mobile: bool
+
+
+class BeaconMonitorResponse(BaseModel):
+    id: str
+    entity_id: str
 
 
 class RoomResponse(BaseModel):

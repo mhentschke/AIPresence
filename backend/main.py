@@ -8,6 +8,8 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from .classes import (
+    _BEACON_MONITOR_META_KEYS,
+    BeaconMonitor,
     Binary_Sensor,
     Device,
     Model,
@@ -25,6 +27,7 @@ from .db.migration import migrate_json_to_db, needs_migration
 from .db.sqlite import SQLiteRepository
 from .dependencies import get_data_source, get_settings
 from .errors import generic_exception_handler, value_error_handler
+from .routes.beacon_monitors import router as beacon_monitors_router
 from .routes.devices import router as devices_router
 from .routes.rooms import router as rooms_router
 from .routes.sensors import router as sensors_router
@@ -82,20 +85,63 @@ async def lifespan(app: FastAPI):
     for k, v in repo.load_all_sensors().items():
         app.state.sensors[k] = Binary_Sensor(entity_id=v["entity_id"], data_source=data_source, mobile=v["mobile"])
 
-    # Build the data gatherer closure now that trackers & sensors are loaded.
-    def data_gatherer():
-        data = {}
-        for entity_id, tracker in {**app.state.trackers, **app.state.sensors}.items():
-            temp_data = tracker.get_data()
-            if isinstance(temp_data, dict):
-                temp_data = {entity_id + "-" + str(key): val for key, val in temp_data.items()}
-            else:
-                temp_data = {entity_id: temp_data}
-            data.update(temp_data)
-        return data
+    app.state.beacon_monitors = {}
+    for k, v in repo.load_all_beacon_monitors().items():
+        app.state.beacon_monitors[k] = BeaconMonitor(entity_id=v["entity_id"], data_source=data_source)
+
+    # Build a per-device data gatherer factory.
+    # Each device gets its own gatherer that collects only data relevant to locating THAT device:
+    #   1. The device's own monitor readings (if it has entity_id) — beacon distances it sees
+    #   2. Fixed monitors' readings of the device's beacon (if it has beacon_id)
+    #   3. Binary sensors (fixed environmental data)
+    def make_data_gatherer(device_entity_id, device_beacon_id):
+        def gather():
+            data = {}
+
+            # Source 1: device's own monitor — reads all beacon distances it can see
+            if device_entity_id is not None:
+                try:
+                    state = data_source.get_entity_state(device_entity_id)
+                    for key, value in state.attributes.items():
+                        if key in _BEACON_MONITOR_META_KEYS:
+                            continue
+                        if isinstance(value, (int, float)):
+                            data[device_entity_id + "-" + str(key)] = value
+                except Exception as e:
+                    logger.warning("Failed to read device monitor %s: %s", device_entity_id, e)
+
+            # Source 2: fixed monitors seeing this device's beacon
+            if device_beacon_id is not None:
+                for monitor_eid, monitor in app.state.beacon_monitors.items():
+                    try:
+                        state = data_source.get_entity_state(monitor_eid)
+                        for key, value in state.attributes.items():
+                            if key == device_beacon_id and isinstance(value, (int, float)):
+                                data[monitor_eid + "-" + str(key)] = value
+                    except Exception as e:
+                        logger.warning("Failed to read fixed monitor %s: %s", monitor_eid, e)
+
+            # Source 3: binary sensors (environmental)
+            for sensor_eid, sensor in app.state.sensors.items():
+                try:
+                    temp_data = sensor.get_data()
+                    if isinstance(temp_data, dict):
+                        for key, val in temp_data.items():
+                            data[sensor_eid + "-" + str(key)] = val
+                    else:
+                        data[sensor_eid] = temp_data
+                except Exception as e:
+                    logger.warning("Failed to read sensor %s: %s", sensor_eid, e)
+
+            return data
+
+        return gather
 
     app.state.devices = {}
     for k, v in repo.load_all_devices().items():
+        dev_entity_id = v.get("entity_id")
+        dev_beacon_id = v.get("beacon_id")
+        gatherer = make_data_gatherer(dev_entity_id, dev_beacon_id)
         model = None
         meta = repo.load_model_metadata(k)
         if meta is not None:
@@ -111,7 +157,7 @@ async def lifespan(app: FastAPI):
                         accuracy=meta["accuracy"],
                     ),
                     scaler=pickle.load(open(Model.get_scaler_filepath(data_path), "rb")),
-                    data_gatherer=data_gatherer,
+                    data_gatherer=gatherer,
                     trained_columns=meta["trained_columns"],
                 )
             except Exception:
@@ -121,10 +167,10 @@ async def lifespan(app: FastAPI):
                 )
         app.state.devices[k] = Device(
             name=v["name"],
-            entity_id=v.get("entity_id"),
-            beacon_id=v.get("beacon_id"),
+            entity_id=dev_entity_id,
+            beacon_id=dev_beacon_id,
             model=model,
-            data_gatherer=data_gatherer,
+            data_gatherer=gatherer,
         )
 
     yield
@@ -151,6 +197,7 @@ app.include_router(devices_router, prefix="/devices", tags=["devices"])
 app.include_router(trackers_router, prefix="/trackers", tags=["trackers"])
 app.include_router(sensors_router, prefix="/sensors", tags=["sensors"])
 app.include_router(rooms_router, prefix="/rooms", tags=["rooms"])
+app.include_router(beacon_monitors_router, prefix="/beacon_monitors", tags=["beacon_monitors"])
 
 
 # --- App-level route (doesn't belong to a specific domain) ---
@@ -168,6 +215,13 @@ def check_entity_id(entity_id: str, data_source=Depends(get_data_source)):
 @app.get("/ha/entities")
 def list_ha_entities(domain: str | None = None, data_source=Depends(get_data_source)):
     return data_source.list_entities(domain)
+
+
+@app.get("/ha/entity/{entity_id:path}")
+def get_ha_entity_state(entity_id: str, data_source=Depends(get_data_source)):
+    """Debug endpoint: return raw state + attributes for any HA entity."""
+    state = data_source.get_entity_state(entity_id)
+    return {"state": state.state, "attributes": state.attributes}
 
 
 # --- Admin endpoints ---

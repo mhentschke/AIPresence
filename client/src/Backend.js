@@ -14,19 +14,24 @@ export class Backend {
     const resp = await apiCall('/devices');
     const data = await resp.json();
     for (let d = 0; d < data.length; d++) {
-      if (data[d].model === null) {
+      if (data[d].model === null || !data[d].model?.trained_model_stats) {
         data[d].trained = false;
         data[d].accuracy = "-";
       } else {
         data[d].trained = true;
         data[d].accuracy = data[d].model.trained_model_stats.accuracy;
       }
-      if (data[d].beacon_id !== undefined) {
+      const hasEntity = data[d].entity_id != null;
+      const hasBeacon = data[d].beacon_id != null;
+      if (hasEntity && hasBeacon) {
+        data[d].identifier = data[d].entity_id;
+        data[d].type = "Both";
+      } else if (hasEntity) {
+        data[d].identifier = data[d].entity_id;
+        data[d].type = "Monitor";
+      } else if (hasBeacon) {
         data[d].identifier = data[d].beacon_id;
         data[d].type = "Beacon";
-      } else if (data[d].entity_id !== undefined) {
-        data[d].identifier = data[d].entity_id;
-        data[d].type = "Tracker";
       } else {
         data[d].identifier = "-";
         data[d].type = "-";
@@ -184,6 +189,29 @@ export class Backend {
 
   static async RemoveRoom(room) {
     const resp = await apiCall('/rooms/' + room.id, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return resp.json();
+  }
+
+  // ---- Beacon Monitors ----
+
+  static async GetBeaconMonitors() {
+    const resp = await apiCall('/beacon_monitors');
+    return resp.json();
+  }
+
+  static async CreateBeaconMonitor(entityId) {
+    const resp = await apiCall('/beacon_monitors/' + entityId, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return resp.json();
+  }
+
+  static async RemoveBeaconMonitor(entityId) {
+    const resp = await apiCall('/beacon_monitors/' + entityId, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
     });

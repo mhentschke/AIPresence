@@ -77,11 +77,14 @@ const EntityPicker = ({ domain, value, onChange, label }) => {
         />
       </div>
       <datalist id={listId}>
-        {entities.map((e) => (
-          <option key={e.entity_id} value={e.entity_id}>
-            {e.friendly_name}
-          </option>
-        ))}
+        {entities.map((e) => {
+          const short = e.entity_id.startsWith(prefix) ? e.entity_id.slice(prefix.length) : e.entity_id;
+          return (
+            <option key={e.entity_id} value={short}>
+              {e.friendly_name}
+            </option>
+          );
+        })}
       </datalist>
     </>
   );

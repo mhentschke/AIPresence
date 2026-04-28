@@ -85,15 +85,16 @@ def list_devices(devices: dict = Depends(get_devices)):
 def create_device(
     body: DeviceCreate,
     devices: dict = Depends(get_devices),
-    data_gatherer=Depends(get_data_gatherer),
+    make_data_gatherer=Depends(get_data_gatherer),
     repo=Depends(get_repository),
 ):
     device_id = str(uuid.uuid4())
+    gatherer = make_data_gatherer(body.entity_id, body.beacon_id)
     devices[device_id] = Device(
         name=body.name,
         entity_id=body.entity_id,
         beacon_id=body.beacon_id,
-        data_gatherer=data_gatherer,
+        data_gatherer=gatherer,
     )
     repo.save_device(device_id, body.name, body.entity_id, body.beacon_id)
     return {"id": device_id}
@@ -121,19 +122,20 @@ def update_device(
     device_id: str,
     body: DeviceCreate,
     devices: dict = Depends(get_devices),
-    data_gatherer=Depends(get_data_gatherer),
+    make_data_gatherer=Depends(get_data_gatherer),
     repo=Depends(get_repository),
 ):
     # Preserve existing model when updating
     model = None
     if device_id in devices:
         model = devices[device_id].model
+    gatherer = make_data_gatherer(body.entity_id, body.beacon_id)
     devices[device_id] = Device(
         name=body.name,
         entity_id=body.entity_id,
         beacon_id=body.beacon_id,
         model=model,
-        data_gatherer=data_gatherer,
+        data_gatherer=gatherer,
     )
     repo.save_device(device_id, body.name, body.entity_id, body.beacon_id)
     return {"detail": "Success"}
@@ -189,8 +191,16 @@ def stop_training(
     devices[device_id].stop_training()
     device = devices[device_id]
     repo.save_device(device_id, device.name, device.entity_id, device.beacon_id)
-    _persist_device_model(device_id, device, repo, settings)
-    return {"detail": "Success"}
+
+    # Training may not produce a model if insufficient data was collected
+    if device.model is not None and device.model.trained_model is not None:
+        _persist_device_model(device_id, device, repo, settings)
+        return {"detail": "Success"}
+    else:
+        return {
+            "detail": "Training stopped but no model was produced. "
+            "Ensure you train in at least 2 rooms with enough samples in each."
+        }
 
 
 @router.get("/{device_id}/model/cancel_training")
@@ -228,9 +238,10 @@ def set_room(
         raise HTTPException(status_code=404, detail="Device not found")
     if room_id not in rooms:
         raise HTTPException(status_code=404, detail="Room not found")
-    if devices[device_id].model is None:
+    device = devices[device_id]
+    if not device.training or device.new_model is None:
         raise HTTPException(status_code=400, detail="Device is not training")
-    devices[device_id].model.set_room(room_id)
+    device.new_model.set_room(room_id)
     return {"detail": "Success"}
 
 
@@ -249,9 +260,15 @@ def get_training_progress(device_id: str, devices: dict = Depends(get_devices)):
     if device_id not in devices:
         raise HTTPException(status_code=404, detail="Device not found")
     device = devices[device_id]
-    if device.model is None:
-        raise HTTPException(status_code=400, detail="Device is not training")
-    progress = device.model.get_training_progress()
-    if not progress:
-        raise HTTPException(status_code=400, detail="Device is not training")
-    return progress
+    # During active training, progress lives on new_model (not model)
+    if device.training and device.new_model is not None:
+        progress = device.new_model.get_training_progress()
+        if not progress:
+            return {}
+        return progress
+    if device.model is not None:
+        progress = device.model.get_training_progress()
+        if not progress:
+            return {}
+        return progress
+    raise HTTPException(status_code=400, detail="Device is not training")

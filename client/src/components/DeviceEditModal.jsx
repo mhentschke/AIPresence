@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import "./Modal.css"
 import EntityPicker from './EntityPicker';
 
@@ -11,86 +10,109 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
         setModal(!modal)
     };
 
-    //const [modal, setModal] = useState(false);
-    const [entityId, setEntityId] = useState("entityMock");//data[deviceCursor].entity_id);
-    const [name, setName] = useState("NameMock");//data[deviceCursor].name);
+    const [entityId, setEntityId] = useState("");
+    const [name, setName] = useState("");
     const [entityIDValid, setEntityIDValid] = useState(true);
     const [type, setType] = useState("Tracker");
 
-    const handleSave = () => {
+    // Initialize state from selected device when editing, reset to defaults when creating
+    useEffect(() => {
+        if (modal && deviceCursor >= 0 && data[deviceCursor]) {
+            const device = data[deviceCursor];
+            setName(device.name || "");
+            setEntityId(device.identifier || device.entity_id || device.beacon_id || "");
+            setType(device.type || "Tracker");
+            setEntityIDValid(true);
+        } else if (modal && deviceCursor === -1) {
+            setName("");
+            setEntityId("");
+            setType("Tracker");
+            setEntityIDValid(true);
+        }
+    }, [modal, deviceCursor, data]);
+
+    const handleSave = async () => {
         let device = {};
         const updatedData = JSON.parse(JSON.stringify(data));
         if(deviceCursor === -1){ // Creating
             if (type === "Tracker"){
-                backend.CheckEntityId(entityId).then((result) => {
-                    if(result){
+                try {
+                    const exists = await backend.CheckEntityId(entityId);
+                    if(exists){
                         device.entity_id = entityId;
                         device.name = name;
                         setEntityIDValid(true);
-                        backend.CreateDevice(device);
-                        updatedData.push(device);
+                        const result = await backend.CreateDevice(device);
+                        device.id = result.id;
                         const tracker = {
                             entity_id: entityId,
                             mobile: true,
-                        }
-                        backend.CreateTracker(tracker);
+                        };
+                        await backend.CreateTracker(tracker);
+                        updatedData.push(device);
                         toggleModal();
                         setData(updatedData);
                         forceUpdate();
-                    }
-                    else{
+                    } else {
                         setEntityIDValid(false);
-                        alert("Entity ID does not Exist in Home Assistant")
+                        alert("Entity ID does not Exist in Home Assistant");
                     }
-                });
+                } catch (err) {
+                    console.error("Error creating tracker device:", err);
+                }
             }
             else if (type === "Beacon"){
                 device.beacon_id = entityId;
                 device.name = name;
-                backend.CreateDevice(device);
-                updatedData.push(device);
-                toggleModal();
-                setData(updatedData);
-                forceUpdate();
+                try {
+                    const result = await backend.CreateDevice(device);
+                    device.id = result.id;
+                    updatedData.push(device);
+                    toggleModal();
+                    setData(updatedData);
+                    forceUpdate();
+                } catch (err) {
+                    console.error("Error creating beacon device:", err);
+                }
             }
-            
         }
         else{ // Updating
             if (type === "Tracker"){
-                backend.CheckEntityId(entityId).then((result) => {
-                    if(result){
+                try {
+                    const exists = await backend.CheckEntityId(entityId);
+                    if(exists){
                         setEntityIDValid(true);
-                        console.log("Full Data:")
-                        console.log(data)
-                        device = data[deviceCursor]
+                        device = data[deviceCursor];
                         device.entity_id = entityId;
-                        device.name = name; 
-                        console.log(data[deviceCursor])
-                        backend.UpdateDevice(device);
+                        device.name = name;
+                        await backend.UpdateDevice(device);
                         updatedData[deviceCursor] = device;
                         toggleModal();
                         setData(updatedData);
                         forceUpdate();
-                    }
-                    else{
+                    } else {
                         setEntityIDValid(false);
-                        alert("Entity ID does not Exist in Home Assistant")
+                        alert("Entity ID does not Exist in Home Assistant");
                     }
-                });
+                } catch (err) {
+                    console.error("Error updating tracker device:", err);
+                }
             }
             else if (type === "Beacon"){
-                device = data[deviceCursor]
+                device = data[deviceCursor];
                 device.beacon_id = entityId;
-                device.name = name; 
-                backend.UpdateDevice(device);
-                updatedData[deviceCursor] = device;
-                toggleModal();
-                setData(updatedData);
-                forceUpdate();
+                device.name = name;
+                try {
+                    await backend.UpdateDevice(device);
+                    updatedData[deviceCursor] = device;
+                    toggleModal();
+                    setData(updatedData);
+                    forceUpdate();
+                } catch (err) {
+                    console.error("Error updating beacon device:", err);
+                }
             }
         }
-        
-        
     };
 
     return ( <>
@@ -128,7 +150,7 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                 <label>Name</label>
                 <input
                     type="text"
-                    defaultValue={(deviceCursor >= 0)?data[deviceCursor].name:"Name"}
+                    value={name}
                     onChange={(e) => setName(e.target.value)}
                 />
                 <p></p>
@@ -143,7 +165,7 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                                         setEntityIDValid(result);
                                     });
                                 }
-                            } defaultChecked={(deviceCursor >= 0)?(data[deviceCursor].type === "Tracker"):false} checked={type==="Tracker"}/>
+                            } checked={type==="Tracker"}/>
                             <label htmlFor="Tracker">Tracker</label><br/>
                         </div>
                         <div>
@@ -152,7 +174,7 @@ const DeviceEditModal = ({data, setData, modal, setModal, deviceCursor, backend,
                                     setType(e.target.value);
                                     setEntityIDValid(true);
                                 }
-                            } defaultChecked={(deviceCursor >= 0)?(data[deviceCursor].type === "Beacon"):false} checked={type==="Beacon"}/>
+                            } checked={type==="Beacon"}/>
                             <label htmlFor="Beacon">Beacon</label><br/>
                         </div>
                     </fieldset>

@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import "./Modal.css"
 import EntityPicker from './EntityPicker';
 
@@ -11,55 +10,63 @@ const TrackerEditModal = ({data, setData, modal, setModal, trackerCursor, backen
         setModal(!modal)
     };
 
-    //const [modal, setModal] = useState(false);
-    const [entityId, setEntityId] = useState("entityMock");//data[trackerCursor].entity_id);
-    const [name, setName] = useState("NameMock");//data[trackerCursor].name);
+    const [entityId, setEntityId] = useState("");
     const [entityIDValid, setEntityIDValid] = useState(false);
 
-    const handleSave = () => {
+    // Initialize state from selected tracker when editing, reset when creating
+    useEffect(() => {
+        if (modal && trackerCursor >= 0 && data[trackerCursor]) {
+            setEntityId(data[trackerCursor].entity_id || "");
+            setEntityIDValid(true);
+        } else if (modal && trackerCursor === -1) {
+            setEntityId("");
+            setEntityIDValid(false);
+        }
+    }, [modal, trackerCursor, data]);
+
+    const handleSave = async () => {
         let tracker = {};
         const updatedData = JSON.parse(JSON.stringify(data));
         if(trackerCursor === -1){ // Creating
-            backend.CheckEntityId(entityId).then((result) => {
-                if(result){
+            try {
+                const exists = await backend.CheckEntityId(entityId);
+                if(exists){
                     tracker.entity_id = entityId;
                     setEntityIDValid(true);
-                    backend.CreateTracker(tracker);
+                    const result = await backend.CreateTracker(tracker);
+                    tracker.id = result.id;
                     updatedData.push(tracker);
                     toggleModal();
                     setData(updatedData);
                     forceUpdate();
-                }
-                else{
+                } else {
                     setEntityIDValid(false);
-                    alert("Entity ID does not Exist in Home Assistant")
+                    alert("Entity ID does not Exist in Home Assistant");
                 }
-            });
-            
+            } catch (err) {
+                console.error("Error creating tracker:", err);
+            }
         }
         else{ // Updating
-            backend.CheckEntityId(entityId).then((result) => {
-                if(result){
+            try {
+                const exists = await backend.CheckEntityId(entityId);
+                if(exists){
                     setEntityIDValid(true);
-                    console.log("Full Data:")
-                    console.log(data)
-                    tracker = data[trackerCursor]
+                    tracker = data[trackerCursor];
                     tracker.entity_id = entityId;
-                    console.log(data[trackerCursor])
-                    backend.UpdateTracker(tracker);
+                    await backend.UpdateTracker(tracker);
                     updatedData[trackerCursor] = tracker;
                     toggleModal();
                     setData(updatedData);
                     forceUpdate();
-                }
-                else{
+                } else {
                     setEntityIDValid(false);
-                    alert("Entity ID does not Exist in Home Assistant")
+                    alert("Entity ID does not Exist in Home Assistant");
                 }
-            });
+            } catch (err) {
+                console.error("Error updating tracker:", err);
+            }
         }
-        
-        
     };
 
     return ( <>

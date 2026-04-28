@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import "./Modal.css"
 
 
@@ -9,31 +9,50 @@ const RoomEditModal = ({data, setData, modal, setModal, roomCursor, backend, for
         setModal(!modal)
     };
 
-    //const [modal, setModal] = useState(false);
-    const [name, setName] = useState("NameMock");
+    const [name, setName] = useState("");
     const [color, setColor] = useState("#ffffff");
 
-    const handleSave = () => {
+    // Initialize state from selected room when editing, reset to defaults when creating
+    useEffect(() => {
+        if (modal && roomCursor >= 0 && data[roomCursor]) {
+            setName(data[roomCursor].name || "");
+            setColor(data[roomCursor].color || "#ffffff");
+        } else if (modal && roomCursor === -1) {
+            setName("");
+            setColor("#ffffff");
+        }
+    }, [modal, roomCursor, data]);
+
+    const handleSave = async () => {
         const room = {};
         const updatedData = JSON.parse(JSON.stringify(data));
         if(roomCursor === -1){ // Creating
             room.name = name;
             room.color = color;
-            backend.CreateRoom(room);
-            updatedData.push(room);
-            toggleModal();
-            setData(updatedData);
-            forceUpdate();            
+            try {
+                const result = await backend.CreateRoom(room);
+                room.id = result.id;
+                updatedData.push(room);
+                toggleModal();
+                setData(updatedData);
+                forceUpdate();
+            } catch (err) {
+                console.error("Error creating room:", err);
+            }
         }
         else{ // Updating
             room.name = name;
             room.color = color;
             room.id = data[roomCursor].id;
-            backend.UpdateRoom(room);
-            updatedData[roomCursor] = room;
-            toggleModal();
-            setData(updatedData);
-            forceUpdate();
+            try {
+                await backend.UpdateRoom(room);
+                updatedData[roomCursor] = room;
+                toggleModal();
+                setData(updatedData);
+                forceUpdate();
+            } catch (err) {
+                console.error("Error updating room:", err);
+            }
         }
     }
 
@@ -47,14 +66,14 @@ const RoomEditModal = ({data, setData, modal, setModal, roomCursor, backend, for
                 <label>Room Name</label>
                 <input
                     type="text"
-                    defaultValue={(roomCursor >= 0)?data[roomCursor].name:"Name"}
+                    value={name}
                     onChange={
                         (e) => {
                             setName(e.target.value);
                     }}
                 />
                 <label>Color</label>
-                <input type="color" id="room_color" name="room_color" value={(roomCursor >= 0)?data[roomCursor].color:color} onChange={
+                <input type="color" id="room_color" name="room_color" value={color} onChange={
                   (e) => {
                     setColor(e.target.value);
                   }

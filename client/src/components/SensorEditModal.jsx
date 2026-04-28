@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import "./Modal.css"
 import EntityPicker from './EntityPicker';
 
@@ -10,55 +10,63 @@ const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend,
         setModal(!modal)
     };
 
-    //const [modal, setModal] = useState(false);
-    const [entityId, setEntityId] = useState("entityMock");//data[sensorCursor].entity_id);
-    const [name, setName] = useState("NameMock");//data[sensorCursor].name);
+    const [entityId, setEntityId] = useState("");
     const [entityIDValid, setEntityIDValid] = useState(false);
 
-    const handleSave = () => {
+    // Initialize state from selected sensor when editing, reset when creating
+    useEffect(() => {
+        if (modal && sensorCursor >= 0 && data[sensorCursor]) {
+            setEntityId(data[sensorCursor].entity_id || "");
+            setEntityIDValid(true);
+        } else if (modal && sensorCursor === -1) {
+            setEntityId("");
+            setEntityIDValid(false);
+        }
+    }, [modal, sensorCursor, data]);
+
+    const handleSave = async () => {
         let sensor = {};
         const updatedData = JSON.parse(JSON.stringify(data));
         if(sensorCursor === -1){ // Creating
-            backend.CheckEntityId(entityId).then((result) => {
-                if(result){
+            try {
+                const exists = await backend.CheckEntityId(entityId);
+                if(exists){
                     sensor.entity_id = entityId;
                     setEntityIDValid(true);
-                    backend.CreateSensor(sensor);
+                    const result = await backend.CreateSensor(sensor);
+                    sensor.id = result.id;
                     updatedData.push(sensor);
                     toggleModal();
                     setData(updatedData);
                     forceUpdate();
-                }
-                else{
+                } else {
                     setEntityIDValid(false);
-                    alert("Entity ID does not Exist in Home Assistant")
+                    alert("Entity ID does not Exist in Home Assistant");
                 }
-            });
-            
+            } catch (err) {
+                console.error("Error creating sensor:", err);
+            }
         }
         else{ // Updating
-            backend.CheckEntityId(entityId).then((result) => {
-                if(result){
+            try {
+                const exists = await backend.CheckEntityId(entityId);
+                if(exists){
                     setEntityIDValid(true);
-                    console.log("Full Data:")
-                    console.log(data)
-                    sensor = data[sensorCursor]
+                    sensor = data[sensorCursor];
                     sensor.entity_id = entityId;
-                    console.log(data[sensorCursor])
-                    backend.UpdateSensor(sensor);
+                    await backend.UpdateSensor(sensor);
                     updatedData[sensorCursor] = sensor;
                     toggleModal();
                     setData(updatedData);
                     forceUpdate();
-                }
-                else{
+                } else {
                     setEntityIDValid(false);
-                    alert("Entity ID does not Exist in Home Assistant")
+                    alert("Entity ID does not Exist in Home Assistant");
                 }
-            });
+            } catch (err) {
+                console.error("Error updating sensor:", err);
+            }
         }
-        
-        
     };
 
     return ( <>

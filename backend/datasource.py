@@ -64,11 +64,7 @@ class StandaloneDataSource:
     """Data source for standalone mode — all operations raise."""
 
     def get_entity_state(self, entity_id: str) -> EntityState:
-        raise DataSourceUnavailableError(
-            "Home Assistant is not configured. Live data retrieval is unavailable."
-        )
+        raise DataSourceUnavailableError("Home Assistant is not configured. Live data retrieval is unavailable.")
 
     def check_entity_exists(self, entity_id: str) -> bool:
-        raise DataSourceUnavailableError(
-            "Home Assistant is not configured. Entity validation is unavailable."
-        )
+        raise DataSourceUnavailableError("Home Assistant is not configured. Entity validation is unavailable.")

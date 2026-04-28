@@ -35,11 +35,7 @@ def data_dir(tmp_path):
             }
         }
     }
-    sensors = {
-        "sensors": {
-            "binary_sensor.motion": {"entity_id": "binary_sensor.motion", "mobile": False}
-        }
-    }
+    sensors = {"sensors": {"binary_sensor.motion": {"entity_id": "binary_sensor.motion", "mobile": False}}}
     devices = {
         "devices": {
             "d1": {

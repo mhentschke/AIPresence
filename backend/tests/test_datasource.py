@@ -11,10 +11,10 @@ from backend.datasource import (
     StandaloneDataSource,
 )
 
-
 # ---------------------------------------------------------------------------
 # HADataSource
 # ---------------------------------------------------------------------------
+
 
 class TestHADataSource:
     def test_get_entity_state_returns_entity_state(self):
@@ -52,6 +52,7 @@ class TestHADataSource:
 # ---------------------------------------------------------------------------
 # StandaloneDataSource
 # ---------------------------------------------------------------------------
+
 
 class TestStandaloneDataSource:
     def test_get_entity_state_raises(self):

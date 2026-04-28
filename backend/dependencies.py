@@ -33,6 +33,7 @@ def get_repository(request: Request):
 
 def get_data_gatherer(request: Request):
     """Returns a callable that gathers current data from all trackers and sensors."""
+
     def gather():
         data = {}
         for entity_id, tracker in {**request.app.state.trackers, **request.app.state.sensors}.items():
@@ -43,4 +44,5 @@ def get_data_gatherer(request: Request):
                 temp_data = {entity_id: temp_data}
             data.update(temp_data)
         return data
+
     return gather

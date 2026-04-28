@@ -179,7 +179,9 @@ def start_training(
 
 
 @router.get("/{device_id}/model/stop_training")
-def stop_training(device_id: str, devices: dict = Depends(get_devices), repo=Depends(get_repository), settings=Depends(get_settings)):
+def stop_training(
+    device_id: str, devices: dict = Depends(get_devices), repo=Depends(get_repository), settings=Depends(get_settings)
+):
     if device_id not in devices:
         raise HTTPException(status_code=404, detail="Device not found")
     if not devices[device_id].training:
@@ -202,7 +204,9 @@ def cancel_training(device_id: str, devices: dict = Depends(get_devices)):
 
 
 @router.post("/{device_id}/model/retrain")
-def retrain(device_id: str, devices: dict = Depends(get_devices), repo=Depends(get_repository), settings=Depends(get_settings)):
+def retrain(
+    device_id: str, devices: dict = Depends(get_devices), repo=Depends(get_repository), settings=Depends(get_settings)
+):
     if device_id not in devices:
         raise HTTPException(status_code=404, detail="Device not found")
     if devices[device_id].training:

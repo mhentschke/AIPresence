@@ -57,9 +57,7 @@ class SQLiteRepository:
     # ------------------------------------------------------------------
 
     def _get_schema_version(self) -> int:
-        self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)"
-        )
+        self.conn.execute("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)")
         row = self.conn.execute("SELECT version FROM schema_version").fetchone()
         if row is None:
             self.conn.execute("INSERT INTO schema_version (version) VALUES (0)")
@@ -95,10 +93,7 @@ class SQLiteRepository:
 
     def load_all_rooms(self) -> dict[str, dict]:
         rows = self.conn.execute("SELECT id, name, color FROM rooms").fetchall()
-        return {
-            row["id"]: {"id": row["id"], "name": row["name"], "color": row["color"]}
-            for row in rows
-        }
+        return {row["id"]: {"id": row["id"], "name": row["name"], "color": row["color"]} for row in rows}
 
     # ------------------------------------------------------------------
     # Trackers

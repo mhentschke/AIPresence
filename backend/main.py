@@ -80,9 +80,7 @@ async def lifespan(app: FastAPI):
 
     app.state.sensors = {}
     for k, v in repo.load_all_sensors().items():
-        app.state.sensors[k] = Binary_Sensor(
-            entity_id=v["entity_id"], data_source=data_source, mobile=v["mobile"]
-        )
+        app.state.sensors[k] = Binary_Sensor(entity_id=v["entity_id"], data_source=data_source, mobile=v["mobile"])
 
     # Build the data gatherer closure now that trackers & sensors are loaded.
     def data_gatherer():
@@ -90,9 +88,7 @@ async def lifespan(app: FastAPI):
         for entity_id, tracker in {**app.state.trackers, **app.state.sensors}.items():
             temp_data = tracker.get_data()
             if isinstance(temp_data, dict):
-                temp_data = {
-                    entity_id + "-" + str(key): val for key, val in temp_data.items()
-                }
+                temp_data = {entity_id + "-" + str(key): val for key, val in temp_data.items()}
             else:
                 temp_data = {entity_id: temp_data}
             data.update(temp_data)
@@ -108,17 +104,13 @@ async def lifespan(app: FastAPI):
                 model = Model(
                     data_path=meta["data_path"],
                     data=pd.read_csv(Model.get_data_filepath(data_path)),
-                    trained_model=pickle.load(
-                        open(Model.get_model_filepath(data_path), "rb")
-                    ),
+                    trained_model=pickle.load(open(Model.get_model_filepath(data_path), "rb")),
                     trained_model_stats=Model_Stats(
                         model_type=meta["model_type"],
                         classification_report=meta["classification_report"],
                         accuracy=meta["accuracy"],
                     ),
-                    scaler=pickle.load(
-                        open(Model.get_scaler_filepath(data_path), "rb")
-                    ),
+                    scaler=pickle.load(open(Model.get_scaler_filepath(data_path), "rb")),
                     data_gatherer=data_gatherer,
                     trained_columns=meta["trained_columns"],
                 )
@@ -148,9 +140,7 @@ app.add_exception_handler(ValueError, value_error_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
 
-async def data_source_unavailable_handler(
-    request: Request, exc: DataSourceUnavailableError
-):
+async def data_source_unavailable_handler(request: Request, exc: DataSourceUnavailableError):
     return JSONResponse(status_code=503, content={"detail": str(exc)})
 
 
@@ -172,9 +162,7 @@ def check_entity_id(entity_id: str, data_source=Depends(get_data_source)):
             return {"detail": "Success"}
         raise HTTPException(status_code=404, detail="Entity not found")
     except DataSourceUnavailableError:
-        raise HTTPException(
-            status_code=503, detail="Home Assistant is not configured"
-        )
+        raise HTTPException(status_code=503, detail="Home Assistant is not configured")
 
 
 # --- Admin endpoints ---
@@ -197,9 +185,7 @@ def reload_config(request: Request, settings=Depends(get_settings)):
 
     # Adjust root logger level immediately
     if "log_level" in changed:
-        logging.getLogger().setLevel(
-            getattr(logging, settings.log_level.upper(), logging.INFO)
-        )
+        logging.getLogger().setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
         logger.info("Log level changed to %s", settings.log_level)
 
     # Recreate data source if HA credentials changed
@@ -221,8 +207,6 @@ def reload_config(request: Request, settings=Depends(get_settings)):
         old_val = getattr(settings, key)
         new_val = getattr(new_settings, key)
         if old_val != new_val:
-            logger.warning(
-                "Config '%s' changed in .env but requires restart to take effect", key
-            )
+            logger.warning("Config '%s' changed in .env but requires restart to take effect", key)
 
     return {"reloaded": changed}

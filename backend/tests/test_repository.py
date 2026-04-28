@@ -16,11 +16,10 @@ def repo():
 # Schema migration
 # ------------------------------------------------------------------
 
+
 class TestSchemaMigration:
     def test_initial_migration_creates_tables(self, repo):
-        tables = repo.conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-        ).fetchall()
+        tables = repo.conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()
         names = {row["name"] for row in tables}
         assert {"rooms", "trackers", "sensors", "devices", "model_metadata"}.issubset(names)
 
@@ -31,6 +30,7 @@ class TestSchemaMigration:
     def test_reopening_does_not_rerun_migrations(self):
         """Opening a second repo on the same DB should not fail."""
         import sqlite3
+
         conn = sqlite3.connect(":memory:")
         # Simulate a first open
         r1 = SQLiteRepository.__new__(SQLiteRepository)
@@ -48,6 +48,7 @@ class TestSchemaMigration:
 # ------------------------------------------------------------------
 # Rooms CRUD
 # ------------------------------------------------------------------
+
 
 class TestRooms:
     def test_save_and_load(self, repo):
@@ -75,6 +76,7 @@ class TestRooms:
 # Trackers CRUD
 # ------------------------------------------------------------------
 
+
 class TestTrackers:
     def test_save_and_load(self, repo):
         repo.save_tracker("device_tracker.phone", True, False, True)
@@ -95,6 +97,7 @@ class TestTrackers:
 # Sensors CRUD
 # ------------------------------------------------------------------
 
+
 class TestSensors:
     def test_save_and_load(self, repo):
         repo.save_sensor("binary_sensor.motion", True)
@@ -111,6 +114,7 @@ class TestSensors:
 # ------------------------------------------------------------------
 # Devices CRUD
 # ------------------------------------------------------------------
+
 
 class TestDevices:
     def test_save_and_load(self, repo):
@@ -131,12 +135,17 @@ class TestDevices:
 # Model Metadata
 # ------------------------------------------------------------------
 
+
 class TestModelMetadata:
     def test_save_and_load(self, repo):
         repo.save_device("d1", "Phone", "device_tracker.phone", None)
         repo.save_model_metadata(
-            "d1", "d1/", 0.95, "RandomForestClassifier",
-            {"precision": 0.9}, ["room_kitchen", "room_office"],
+            "d1",
+            "d1/",
+            0.95,
+            "RandomForestClassifier",
+            {"precision": 0.9},
+            ["room_kitchen", "room_office"],
         )
         meta = repo.load_model_metadata("d1")
         assert meta is not None
@@ -152,7 +161,12 @@ class TestModelMetadata:
     def test_cascade_delete(self, repo):
         repo.save_device("d1", "Phone", "device_tracker.phone", None)
         repo.save_model_metadata(
-            "d1", "d1/", 0.9, "RF", {}, ["col1"],
+            "d1",
+            "d1/",
+            0.9,
+            "RF",
+            {},
+            ["col1"],
         )
         repo.delete_device("d1")
         assert repo.load_model_metadata("d1") is None

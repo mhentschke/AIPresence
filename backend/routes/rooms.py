@@ -13,9 +13,7 @@ router = APIRouter()
 def list_rooms(rooms: dict = Depends(get_rooms)):
     result = []
     for key, room in rooms.items():
-        result.append(
-            RoomResponse(id=key, name=room.name, color=room.color)
-        )
+        result.append(RoomResponse(id=key, name=room.name, color=room.color))
     return result
 
 

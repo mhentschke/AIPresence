@@ -4,9 +4,10 @@ Uses FastAPI TestClient with dependency overrides so no HA client or
 persisted files are needed.
 """
 
-import sys
 import os
+import sys
 from contextlib import asynccontextmanager
+
 import pytest
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -15,20 +16,20 @@ from fastapi.testclient import TestClient
 # Ensure the backend package is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
-from backend.datasource import DataSourceUnavailableError, StandaloneDataSource
 from backend.config import Settings
+from backend.datasource import DataSourceUnavailableError, StandaloneDataSource
 from backend.db.sqlite import SQLiteRepository
 from backend.dependencies import get_data_source
+from backend.errors import generic_exception_handler, value_error_handler
 from backend.routes.devices import router as devices_router
 from backend.routes.rooms import router as rooms_router
 from backend.routes.sensors import router as sensors_router
 from backend.routes.trackers import router as trackers_router
-from backend.errors import generic_exception_handler, value_error_handler
-
 
 # ---------------------------------------------------------------------------
 # Test app factory — no HA client, no disk I/O
 # ---------------------------------------------------------------------------
+
 
 def _create_test_app() -> FastAPI:
     """Build a minimal FastAPI app with in-memory state for testing."""
@@ -48,9 +49,7 @@ def _create_test_app() -> FastAPI:
     app.add_exception_handler(ValueError, value_error_handler)
     app.add_exception_handler(Exception, generic_exception_handler)
 
-    async def data_source_unavailable_handler(
-        request: Request, exc: DataSourceUnavailableError
-    ):
+    async def data_source_unavailable_handler(request: Request, exc: DataSourceUnavailableError):
         return JSONResponse(status_code=503, content={"detail": str(exc)})
 
     app.add_exception_handler(DataSourceUnavailableError, data_source_unavailable_handler)
@@ -68,9 +67,7 @@ def _create_test_app() -> FastAPI:
                 return {"detail": "Success"}
             raise HTTPException(status_code=404, detail="Entity not found")
         except DataSourceUnavailableError:
-            raise HTTPException(
-                status_code=503, detail="Home Assistant is not configured"
-            )
+            raise HTTPException(status_code=503, detail="Home Assistant is not configured")
 
     return app
 
@@ -88,6 +85,7 @@ def client(tmp_path):
 # ---------------------------------------------------------------------------
 # Rooms CRUD
 # ---------------------------------------------------------------------------
+
 
 class TestRooms:
     def test_list_rooms_empty(self, client):
@@ -137,6 +135,7 @@ class TestRooms:
 # Trackers CRUD
 # ---------------------------------------------------------------------------
 
+
 class TestTrackers:
     def test_list_trackers_empty(self, client):
         resp = client.get("/trackers")
@@ -183,6 +182,7 @@ class TestTrackers:
 # Sensors CRUD
 # ---------------------------------------------------------------------------
 
+
 class TestSensors:
     def test_list_sensors_empty(self, client):
         resp = client.get("/sensors")
@@ -217,6 +217,7 @@ class TestSensors:
 # ---------------------------------------------------------------------------
 # Devices CRUD
 # ---------------------------------------------------------------------------
+
 
 class TestDevices:
     def test_list_devices_empty(self, client):
@@ -255,6 +256,7 @@ class TestDevices:
 # Validation errors (422)
 # ---------------------------------------------------------------------------
 
+
 class TestValidation:
     def test_device_missing_both_ids_422(self, client):
         resp = client.post("/devices", json={"name": "Bad"})
@@ -276,6 +278,7 @@ class TestValidation:
 # Check Entity ID endpoint (standalone mode → 503)
 # ---------------------------------------------------------------------------
 
+
 class TestCheckEntityId:
     def test_check_entity_id_returns_503_in_standalone_mode(self, client):
         resp = client.get("/device/check_entity_id/binary_sensor.motion")
@@ -286,6 +289,7 @@ class TestCheckEntityId:
 # ---------------------------------------------------------------------------
 # DataSourceUnavailableError handler
 # ---------------------------------------------------------------------------
+
 
 class TestDataSourceUnavailableHandler:
     def test_datasource_unavailable_returns_503(self, client):

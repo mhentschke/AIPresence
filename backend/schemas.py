@@ -4,7 +4,6 @@ from typing import Optional
 
 from pydantic import BaseModel, model_validator
 
-
 # ---------------------------------------------------------------------------
 # API Request Models
 # ---------------------------------------------------------------------------
@@ -81,6 +80,3 @@ class RoomResponse(BaseModel):
     id: str
     name: str
     color: str
-
-
-

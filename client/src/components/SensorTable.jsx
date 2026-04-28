@@ -27,12 +27,12 @@ const SensorTable = ({ data, setData, sensorEditModal, sensorSelector, backend, 
             <tr>
               <td>{sensor.entity_id}</td>
               <td>
-                <input type="checkbox" id="sensor_mobile" name="sensor_mobile" defaultChecked={sensor.mobile} onChange={
-                  () => {
+                <input type="checkbox" id={`sensor_mobile_${index}`} name="sensor_mobile" checked={sensor.mobile} onChange={
+                  async () => {
                     const newData = JSON.parse(JSON.stringify(data));
                     newData[index].mobile = !newData[index].mobile;
                     setData(newData);
-                    backend.UpdateSensor(newData[index]);
+                    await backend.UpdateSensor(newData[index]);
                     forceUpdate();
                   }
                 }>

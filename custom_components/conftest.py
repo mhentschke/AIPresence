@@ -99,6 +99,7 @@ flow.FlowResult = dict
 hassio = sys.modules["homeassistant.components.hassio"]
 hassio.async_get_addon_info = MagicMock()
 hassio.is_hassio = MagicMock()
+hassio.get_supervisor_client = MagicMock()
 
 # ---------------------------------------------------------------------------
 # Bluetooth component stubs

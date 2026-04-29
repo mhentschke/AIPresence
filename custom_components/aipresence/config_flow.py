@@ -47,30 +47,43 @@ async def _async_discover_addon(hass) -> str | None:
     try:
         # Check if hassio is loaded
         if "hassio" not in hass.config.components:
+            _LOGGER.warning("Add-on discovery: hassio not in components")
             return None
 
-        from homeassistant.components.hassio import (
-            async_get_addon_info,
-            is_hassio,
-        )
+        from homeassistant.components.hassio import is_hassio
 
         if not is_hassio(hass):
+            _LOGGER.warning("Add-on discovery: is_hassio returned False")
             return None
 
-        addon_info = await async_get_addon_info(hass, ADDON_SLUG)
-        if addon_info is None:
+        # Use the Supervisor REST API directly via the hassio websession.
+        # The helper function signatures vary across HA versions, so hitting
+        # the Supervisor HTTP API is the most reliable approach.
+        from homeassistant.components.hassio import get_supervisor_client
+
+        client = get_supervisor_client(hass)
+        addon_info = await client.addons.addon_info(ADDON_SLUG)
+
+        state = getattr(addon_info, "state", None)
+        _LOGGER.debug("Add-on discovery: addon state = %s", state)
+
+        if state is None:
+            _LOGGER.warning("Add-on discovery: could not read addon state")
             return None
 
-        # addon_info may be a dict (in tests) or an AddonInfo object (real HA).
-        # Support both access patterns.
-        state = addon_info.get("state") if isinstance(addon_info, dict) else getattr(addon_info, "state", None)
-        if state != "started":
+        # The state may be a string or an enum — compare by value
+        state_str = state.value if hasattr(state, "value") else str(state)
+        if state_str != "started":
+            _LOGGER.warning("Add-on discovery: addon state is %s, not started", state_str)
             return None
 
-        # Build internal URL from the add-on slug
-        return f"http://{ADDON_SLUG.replace('_', '-')}:{ADDON_PORT}"
+        # Build internal URL from the add-on hostname
+        hostname = getattr(addon_info, "hostname", None) or ADDON_SLUG.replace("_", "-")
+        url = f"http://{hostname}:{ADDON_PORT}"
+        _LOGGER.info("Add-on discovery: found AIPresence at %s", url)
+        return url
     except Exception:  # noqa: BLE001
-        _LOGGER.debug("Add-on auto-discovery failed", exc_info=True)
+        _LOGGER.warning("Add-on auto-discovery failed", exc_info=True)
         return None
 
 

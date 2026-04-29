@@ -64,6 +64,14 @@ async def test_validate_backend_failure_unreachable():
 # ---------------------------------------------------------------------------
 
 
+class _FakeAddonInfo:
+    """Minimal stand-in for a Supervisor AddonInfo object."""
+
+    def __init__(self, state: str, hostname: str = "local-aipresence"):
+        self.state = state
+        self.hostname = hostname
+
+
 @pytest.mark.asyncio
 async def test_discover_addon_hassio_not_loaded():
     """Test discovery returns None when hassio is not loaded."""
@@ -80,15 +88,19 @@ async def test_discover_addon_found_and_started():
     hass = AsyncMock()
     hass.config.components = {"hassio"}
 
+    mock_client = AsyncMock()
+    mock_client.addons.addon_info = AsyncMock(
+        return_value=_FakeAddonInfo(state="started", hostname="local-aipresence"),
+    )
+
     with (
         patch(
             "homeassistant.components.hassio.is_hassio",
             return_value=True,
         ),
         patch(
-            "homeassistant.components.hassio.async_get_addon_info",
-            new_callable=AsyncMock,
-            return_value={"state": "started"},
+            "homeassistant.components.hassio.get_supervisor_client",
+            return_value=mock_client,
         ),
     ):
         result = await _async_discover_addon(hass)
@@ -101,15 +113,19 @@ async def test_discover_addon_not_started():
     hass = AsyncMock()
     hass.config.components = {"hassio"}
 
+    mock_client = AsyncMock()
+    mock_client.addons.addon_info = AsyncMock(
+        return_value=_FakeAddonInfo(state="stopped"),
+    )
+
     with (
         patch(
             "homeassistant.components.hassio.is_hassio",
             return_value=True,
         ),
         patch(
-            "homeassistant.components.hassio.async_get_addon_info",
-            new_callable=AsyncMock,
-            return_value={"state": "stopped"},
+            "homeassistant.components.hassio.get_supervisor_client",
+            return_value=mock_client,
         ),
     ):
         result = await _async_discover_addon(hass)
@@ -122,15 +138,17 @@ async def test_discover_addon_not_found():
     hass = AsyncMock()
     hass.config.components = {"hassio"}
 
+    mock_client = AsyncMock()
+    mock_client.addons.addon_info = AsyncMock(side_effect=Exception("Not found"))
+
     with (
         patch(
             "homeassistant.components.hassio.is_hassio",
             return_value=True,
         ),
         patch(
-            "homeassistant.components.hassio.async_get_addon_info",
-            new_callable=AsyncMock,
-            return_value=None,
+            "homeassistant.components.hassio.get_supervisor_client",
+            return_value=mock_client,
         ),
     ):
         result = await _async_discover_addon(hass)

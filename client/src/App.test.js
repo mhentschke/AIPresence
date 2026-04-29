@@ -7,7 +7,7 @@ import { Backend } from './Backend';
 jest.mock('./Backend', () => ({
   Backend: {
     GetDevices: jest.fn(),
-    GetTrackers: jest.fn(),
+    GetBeaconMonitors: jest.fn(),
     GetSensors: jest.fn(),
     GetRooms: jest.fn(),
     GetDeviceLocation: jest.fn(),
@@ -16,7 +16,7 @@ jest.mock('./Backend', () => ({
 
 beforeEach(() => {
   Backend.GetDevices.mockResolvedValue([]);
-  Backend.GetTrackers.mockResolvedValue([]);
+  Backend.GetBeaconMonitors.mockResolvedValue([]);
   Backend.GetSensors.mockResolvedValue([]);
   Backend.GetRooms.mockResolvedValue([]);
 });
@@ -25,13 +25,13 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-test('renders Devices, Trackers, Sensors, and Rooms headings', async () => {
+test('renders Devices, Monitors, Sensors, and Rooms headings', async () => {
   render(<App />);
 
   await waitFor(() => {
     expect(screen.getByText('Devices')).toBeInTheDocument();
   });
-  expect(screen.getByText('Trackers')).toBeInTheDocument();
+  expect(screen.getByText('Monitors')).toBeInTheDocument();
   expect(screen.getByText('Sensors')).toBeInTheDocument();
   expect(screen.getByText('Rooms')).toBeInTheDocument();
 });
@@ -42,7 +42,7 @@ test('calls Backend API methods on mount', async () => {
   await waitFor(() => {
     expect(Backend.GetDevices).toHaveBeenCalledTimes(1);
   });
-  expect(Backend.GetTrackers).toHaveBeenCalledTimes(1);
+  expect(Backend.GetBeaconMonitors).toHaveBeenCalledTimes(1);
   expect(Backend.GetSensors).toHaveBeenCalledTimes(1);
   expect(Backend.GetRooms).toHaveBeenCalledTimes(1);
 });

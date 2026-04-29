@@ -25,8 +25,6 @@ function App() {
     const [deviceEditModal, setDeviceEditModal] = useState(false)
     const [deviceTrainModal, setDeviceTrainModal] = useState(false)
     const [deviceCursor, setDeviceCursor] = useState({})
-    const [trackerData, setTrackerData] = useState([])
-    const [trackerEditModal, setTrackerEditModal] = useState(false)
     const [monitorData, setMonitorData] = useState([])
     const [monitorEditModal, setMonitorEditModal] = useState(false)
     const [sensorData, setSensorData] = useState([{}])
@@ -51,12 +49,6 @@ function App() {
                 console.log(data)
             }
         )
-        Backend.GetTrackers().then(
-            data => {
-                setTrackerData(data)
-                console.log(data)
-            }
-        )
         Backend.GetBeaconMonitors().then(
             data => {
                 setMonitorData(data)
@@ -78,7 +70,7 @@ function App() {
     }, [])
 
     useEffect(() => {
-        const anyModalOpen = deviceEditModal || deviceTrainModal || trackerEditModal || monitorEditModal || sensorEditModal || roomEditModal;
+        const anyModalOpen = deviceEditModal || deviceTrainModal || monitorEditModal || sensorEditModal || roomEditModal;
 
         if (!anyModalOpen) {
             intervalRef.current = setInterval(() => {
@@ -113,7 +105,7 @@ function App() {
             clearInterval(intervalRef.current);
             intervalRef.current = undefined;
         };
-    }, [deviceEditModal, deviceTrainModal, trackerEditModal, monitorEditModal, sensorEditModal, roomEditModal]);
+    }, [deviceEditModal, deviceTrainModal, monitorEditModal, sensorEditModal, roomEditModal]);
 
     return (
         <div>
@@ -130,10 +122,6 @@ function App() {
             </div>
             <div className = "w3-responsive">
                 <DeviceTrainingModal devices={data} setDevices={setData} rooms={roomData} setRooms={setRoomData} modal={deviceTrainModal} setModal={setDeviceTrainModal} deviceCursor={deviceCursor} backend={Backend} getElementFromId={getElementFromId}/>
-            </div>
-            <h1>Trackers</h1>
-            <div className = "w3-responsive">
-                <p><em>Legacy — use Monitors below for BLE beacon tracking.</em></p>
             </div>
             <h1>Monitors</h1>
             <div className = "w3-responsive">

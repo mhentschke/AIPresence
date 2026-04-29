@@ -86,6 +86,8 @@ def _wire_scanner_entities(
         entity = AIPresenceScannerSensor(entry, scanner_manager, scanner_address)
         async_add_entities([entity])
         _LOGGER.debug("Created scanner sensor entity for %s", scanner_address)
+        # Trigger auto-registration with the backend
+        hass.async_create_task(scanner_manager.async_register_scanner(scanner_address))
 
     scanner_manager.register_scanner_entity_callback(_on_new_scanner)
 
@@ -93,6 +95,8 @@ def _wire_scanner_entities(
     for scanner_address in list(scanner_manager.known_scanners):
         entity = AIPresenceScannerSensor(entry, scanner_manager, scanner_address)
         async_add_entities([entity])
+        # Register already-discovered scanners with the backend
+        hass.async_create_task(scanner_manager.async_register_scanner(scanner_address))
 
 
 class AIPresenceConfidenceSensor(CoordinatorEntity, SensorEntity):

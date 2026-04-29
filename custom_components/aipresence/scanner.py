@@ -10,6 +10,7 @@ import logging
 import struct
 from datetime import timedelta
 
+import aiohttp
 from homeassistant.components.bluetooth import (
     BluetoothCallbackMatcher,
     BluetoothChange,
@@ -19,10 +20,11 @@ from homeassistant.components.bluetooth import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util.dt import utcnow
 
-from .const import CONF_BEACON_TIMEOUT, DEFAULT_BEACON_TIMEOUT, DOMAIN
+from .const import CONF_BACKEND_URL, CONF_BEACON_TIMEOUT, DEFAULT_BEACON_TIMEOUT, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -83,12 +85,20 @@ class ScannerManager:
         self.hass = hass
         self.entry = entry
         self.beacon_timeout: int = beacon_timeout or entry.options.get(CONF_BEACON_TIMEOUT, DEFAULT_BEACON_TIMEOUT)
+        self.backend_url: str = entry.data.get(CONF_BACKEND_URL, "")
+        self.session = async_get_clientsession(hass)
 
         # {scanner_address: {beacon_id: (rssi, timestamp)}}
         self.scanners: dict[str, dict[str, tuple[int, float]]] = {}
 
         # Set of scanner addresses that have been seen (for entity creation)
         self.known_scanners: set[str] = set()
+
+        # Scanner entity IDs that have been successfully registered with the backend
+        self._registered_scanners: set[str] = set()
+
+        # Mapping from scanner_address to the entity_id used for backend registration
+        self._scanner_entity_ids: dict[str, str] = {}
 
         # Callbacks for scanner entity management
         self._scanner_entity_callbacks: list = []
@@ -179,6 +189,95 @@ class ScannerManager:
     def register_scanner_entity_callback(self, cb) -> None:
         """Register a callback invoked when a new scanner is detected."""
         self._scanner_entity_callbacks.append(cb)
+
+    # ------------------------------------------------------------------
+    # Backend auto-registration
+    # ------------------------------------------------------------------
+
+    def _build_entity_id(self, scanner_address: str) -> str:
+        """Derive the HA entity_id for a scanner address."""
+        safe_name = scanner_address.replace(":", "_").replace(".", "_").lower()
+        return f"sensor.{DOMAIN}_proxy_{safe_name}"
+
+    async def async_register_scanner(self, scanner_address: str) -> None:
+        """Register a scanner entity with the AIPresence backend.
+
+        Calls ``POST /beacon_monitors/<entity_id>``. Failures are logged
+        as warnings without blocking scanner operation.
+        """
+        entity_id = self._build_entity_id(scanner_address)
+        self._scanner_entity_ids[scanner_address] = entity_id
+
+        if entity_id in self._registered_scanners:
+            return
+
+        if not self.backend_url:
+            _LOGGER.warning("No backend URL configured; skipping scanner registration for %s", entity_id)
+            return
+
+        try:
+            timeout = aiohttp.ClientTimeout(total=5)
+            async with self.session.post(
+                f"{self.backend_url}/beacon_monitors/{entity_id}",
+                timeout=timeout,
+            ) as resp:
+                if resp.status in (200, 201, 409):
+                    # 409 = already registered, treat as success
+                    self._registered_scanners.add(entity_id)
+                    _LOGGER.debug("Registered scanner %s with backend", entity_id)
+                else:
+                    _LOGGER.warning(
+                        "Failed to register scanner %s with backend: HTTP %s",
+                        entity_id,
+                        resp.status,
+                    )
+        except (aiohttp.ClientError, TimeoutError) as err:
+            _LOGGER.warning("Failed to register scanner %s with backend: %s", entity_id, err)
+
+    async def async_deregister_scanner(self, scanner_address: str) -> None:
+        """Deregister a scanner entity from the AIPresence backend.
+
+        Calls ``DELETE /beacon_monitors/<entity_id>``. Failures are logged
+        as warnings without blocking.
+        """
+        entity_id = self._scanner_entity_ids.get(scanner_address)
+        if entity_id is None:
+            entity_id = self._build_entity_id(scanner_address)
+
+        if not self.backend_url:
+            _LOGGER.warning("No backend URL configured; skipping scanner deregistration for %s", entity_id)
+            return
+
+        try:
+            timeout = aiohttp.ClientTimeout(total=5)
+            async with self.session.delete(
+                f"{self.backend_url}/beacon_monitors/{entity_id}",
+                timeout=timeout,
+            ) as resp:
+                if resp.status in (200, 404):
+                    # 404 = already gone, treat as success
+                    self._registered_scanners.discard(entity_id)
+                    _LOGGER.debug("Deregistered scanner %s from backend", entity_id)
+                else:
+                    _LOGGER.warning(
+                        "Failed to deregister scanner %s from backend: HTTP %s",
+                        entity_id,
+                        resp.status,
+                    )
+        except (aiohttp.ClientError, TimeoutError) as err:
+            _LOGGER.warning("Failed to deregister scanner %s from backend: %s", entity_id, err)
+
+        self._scanner_entity_ids.pop(scanner_address, None)
+
+    async def async_retry_registrations(self) -> None:
+        """Retry registration for any scanners not yet registered.
+
+        Intended to be called on each coordinator poll cycle.
+        """
+        for scanner_address in list(self.known_scanners):
+            entity_id = self._scanner_entity_ids.get(scanner_address)
+            if entity_id is None or entity_id not in self._registered_scanners:
+                await self.async_register_scanner(scanner_address)
 
 
 async def async_setup_scanner(

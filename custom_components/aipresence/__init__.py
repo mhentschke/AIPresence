@@ -7,7 +7,7 @@ from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 
 from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .coordinator import AIPresenceCoordinator
@@ -27,9 +27,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Set up BLE scanner before forwarding platforms so sensor.py can wire
     # scanner entity callbacks during its async_setup_entry.
-    await async_setup_scanner(hass, entry)
+    scanner_manager = await async_setup_scanner(hass, entry)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Register a coordinator listener that retries scanner registrations
+    # with the backend on each poll cycle.
+    async def _async_retry_scanner_registrations() -> None:
+        await scanner_manager.async_retry_registrations()
+
+    @callback
+    def _on_coordinator_update() -> None:
+        hass.async_create_task(_async_retry_scanner_registrations())
+
+    coordinator.async_add_listener(_on_coordinator_update)
 
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Backend } from '../Backend';
+import styles from './EntityPicker.module.css';
 
 const EntityPicker = ({ domain, value, onChange, label }) => {
   const [entities, setEntities] = useState(null);
@@ -37,9 +38,9 @@ const EntityPicker = ({ domain, value, onChange, label }) => {
     return (
       <>
         {label && <label>{label}</label>}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{prefix}</span>
-          <input type="text" disabled placeholder="Loading entities..." style={{ flex: 1 }} />
+        <div className={styles.wrapper}>
+          <span className={styles.prefix}>{prefix}</span>
+          <input className={styles.input} type="text" disabled placeholder="Loading entities..." />
         </div>
       </>
     );
@@ -49,13 +50,13 @@ const EntityPicker = ({ domain, value, onChange, label }) => {
     return (
       <>
         {label && <label>{label}</label>}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{prefix}</span>
+        <div className={styles.wrapper}>
+          <span className={styles.prefix}>{prefix}</span>
           <input
+            className={styles.input}
             type="text"
             value={shortValue}
             onChange={(e) => handleChange(e.target.value)}
-            style={{ flex: 1 }}
           />
         </div>
       </>
@@ -66,14 +67,14 @@ const EntityPicker = ({ domain, value, onChange, label }) => {
   return (
     <>
       {label && <label>{label}</label>}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <span style={{ fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{prefix}</span>
+      <div className={styles.wrapper}>
+        <span className={styles.prefix}>{prefix}</span>
         <input
+          className={styles.input}
           list={listId}
           type="text"
           value={shortValue}
           onChange={(e) => handleChange(e.target.value)}
-          style={{ flex: 1 }}
         />
       </div>
       <datalist id={listId}>

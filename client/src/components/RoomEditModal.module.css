@@ -1,0 +1,7 @@
+/* Component-specific styles for RoomEditModal */
+.colorRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}

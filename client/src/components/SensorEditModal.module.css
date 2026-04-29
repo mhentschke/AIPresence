@@ -1,0 +1,6 @@
+/* Component-specific styles for SensorEditModal */
+.validIndicator {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-xs);
+}

@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import "./Modal.css"
+import { useToast } from './ToastContext';
+import modalStyles from './Modal.module.css';
+import btnStyles from './Button.module.css';
+import styles from './DeviceTrainingModal.module.css';
 
 const DeviceTrainingModal = ({ devices, setDevices, rooms, modal, setModal, deviceCursor, backend, getElementFromId }) => {
+
+    const { addToast } = useToast();
 
     const [trainingOverwrite, setTrainingOverwrite] = useState(false);
     const [roomTrainingProgress, setRoomTrainingProgress] = useState(0);
@@ -88,8 +93,9 @@ const DeviceTrainingModal = ({ devices, setDevices, rooms, modal, setModal, devi
                 // Refresh device list to get updated model stats
                 const updatedDevices = await backend.GetDevices();
                 setDevices(updatedDevices);
+                addToast("Training completed successfully", "success");
             } catch (e) {
-                alert("Error stopping training: " + e.message);
+                addToast("Error stopping training: " + e.message, "error");
             }
             setTraining(false);
         }
@@ -113,50 +119,48 @@ const DeviceTrainingModal = ({ devices, setDevices, rooms, modal, setModal, devi
     return (
         <>
             {modal && (
-                <div className='modal'>
-                    <div onClick={handleCancel} className="overlay"></div>
-                    <div className="modal-content">
-                        <h2>Device Training</h2>
-                        <p>Choose a room to start!</p>
-                        <p></p>
-                        <input
-                            type="checkbox"
-                            id="training_overwrite"
-                            name="training_overwrite"
-                            checked={trainingOverwrite}
-                            onChange={(e) => setTrainingOverwrite(e.target.checked)}
-                        />
-                        <label htmlFor="training_overwrite">Overwrite Training</label>
-                        <div className="button-grid-rooms">
-                            {rooms.map((room, index) => (
-                                <button
-                                    key={room.id}
-                                    onClick={() => handleRoomButtonClick(room.id, index)}
-                                    style={{ backgroundColor: room.color }}
-                                >
-                                    {room.name}
-                                </button>
-                            ))}
+                <div className={modalStyles.modal}>
+                    <div onClick={handleCancel} className={modalStyles.overlay}></div>
+                    <div className={modalStyles.content}>
+                        <div className={modalStyles.header}>
+                            <h2>Device Training</h2>
                         </div>
-                        {training && (
-                            <>
-                                <div>
-                                    <progress id="training_progress" value={roomTrainingProgress} max="100"></progress>
+                        <div className={modalStyles.body}>
+                            <p>Choose a room to start!</p>
+                            <div className={styles.overwriteRow}>
+                                <input
+                                    type="checkbox"
+                                    id="training_overwrite"
+                                    name="training_overwrite"
+                                    checked={trainingOverwrite}
+                                    onChange={(e) => setTrainingOverwrite(e.target.checked)}
+                                />
+                                <label htmlFor="training_overwrite">Overwrite Training</label>
+                            </div>
+                            <div className={styles.roomGrid}>
+                                {rooms.map((room, index) => (
+                                    <button
+                                        key={room.id}
+                                        className={styles.roomButton}
+                                        onClick={() => handleRoomButtonClick(room.id, index)}
+                                        style={{ backgroundColor: room.color }}
+                                    >
+                                        {room.name}
+                                    </button>
+                                ))}
+                            </div>
+                            {training && (
+                                <div className={styles.progressSection}>
+                                    <progress className={styles.progressBar} id="training_progress" value={roomTrainingProgress} max="100"></progress>
+                                    <p className={styles.statusText}>Training Progress: {roomTrainingProgress.toFixed(0)}% - {roomTrainingSamples} samples</p>
+                                    <p className={styles.statusText}>Current Room: {roomIndex >= 0 ? rooms[roomIndex].name : "Not Training"}</p>
+                                    <p className={styles.statusText}>Old Model Prediction: {currentRoomIdRef.current ? (() => { const el = getElementFromId(rooms, "id", currentRoomIdRef.current); return el !== -1 ? el.name : "-"; })() : "Not Training"}</p>
                                 </div>
-                                <div>
-                                    <p>Training Progress: {roomTrainingProgress.toFixed(0)}% - {roomTrainingSamples} samples</p>
-                                </div>
-                                <div>
-                                    <p>Current Room: {roomIndex >= 0 ? rooms[roomIndex].name : "Not Training"}</p>
-                                </div>
-                                <div>
-                                    <p>Old Model Prediction: {currentRoomIdRef.current ? (() => { const el = getElementFromId(rooms, "id", currentRoomIdRef.current); return el !== -1 ? el.name : "-"; })() : "Not Training"}</p>
-                                </div>
-                            </>
-                        )}
-                        <div>
-                            <button onClick={handleDone}>Done</button>
-                            <button onClick={handleCancel}>Cancel</button>
+                            )}
+                        </div>
+                        <div className={modalStyles.footer}>
+                            <button className={btnStyles.secondary} onClick={handleCancel}>Cancel</button>
+                            <button className={btnStyles.primary} onClick={handleDone}>Done</button>
                         </div>
                     </div>
                 </div>

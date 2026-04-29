@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
-import "./Modal.css"
+import { useToast } from './ToastContext';
+import modalStyles from './Modal.module.css';
+import btnStyles from './Button.module.css';
 import EntityPicker from './EntityPicker';
 
 const DeviceEditModal = ({ data, setData, modal, setModal, deviceCursor, backend }) => {
+
+    const { addToast } = useToast();
 
     const toggleModal = () => {
         setModal(!modal)
@@ -32,7 +36,7 @@ const DeviceEditModal = ({ data, setData, modal, setModal, deviceCursor, backend
 
     const handleSave = async () => {
         if (!hasAtLeastOneId) {
-            alert("At least one of Entity ID or Beacon ID must be filled");
+            addToast("At least one of Entity ID or Beacon ID must be filled", "error");
             return;
         }
 
@@ -48,11 +52,11 @@ const DeviceEditModal = ({ data, setData, modal, setModal, deviceCursor, backend
                 const exists = await backend.CheckEntityId(device.entity_id);
                 if (!exists) {
                     setEntityIDValid(false);
-                    alert("Entity ID does not exist in Home Assistant");
+                    addToast("Entity ID does not exist in Home Assistant", "error");
                     return;
                 }
             } catch (err) {
-                alert("Error validating entity: " + err.message);
+                addToast("Error validating entity: " + err.message, "error");
                 return;
             }
         }
@@ -65,83 +69,83 @@ const DeviceEditModal = ({ data, setData, modal, setModal, deviceCursor, backend
                 const result = await backend.CreateDevice(device);
                 device.id = result.id;
                 updatedData.push(device);
+                addToast("Device created successfully", "success");
             } else {
                 device.id = data[deviceCursor].id;
                 await backend.UpdateDevice(device);
                 updatedData[deviceCursor] = device;
+                addToast("Device updated successfully", "success");
             }
             toggleModal();
             setData(updatedData);
         } catch (err) {
-            alert("Error saving device: " + err.message);
+            addToast("Error saving device: " + err.message, "error");
         }
     };
 
     return (
         <>
             {modal && (
-                <div className='modal'>
-                    <div onClick={toggleModal} className="overlay"></div>
-                    <div className="modal-content">
-                        {deviceCursor >= 0 ? <h2>Edit Device</h2> : <h2>Add Device</h2>}
-
-                        <label>Name</label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                        />
-
-                        <p></p>
-
-                        <fieldset>
-                            <legend>Monitor (Entity ID)</legend>
-                            <p style={{ fontSize: '0.85em', margin: '4px 0 8px' }}>
-                                HA sensor entity for this device's beacon monitor (e.g. phone running BLE scanner)
-                            </p>
-                            <EntityPicker
-                                domain="sensor"
-                                value={entityId}
-                                onChange={(val) => {
-                                    setEntityId(val);
-                                    if (val.trim()) {
-                                        backend.CheckEntityId(val).then((result) => {
-                                            setEntityIDValid(result);
-                                        });
-                                    } else {
-                                        setEntityIDValid(true);
-                                    }
-                                }}
-                                label=""
-                            />
-                        </fieldset>
-
-                        <p></p>
-
-                        <fieldset>
-                            <legend>Beacon ID</legend>
-                            <p style={{ fontSize: '0.85em', margin: '4px 0 8px' }}>
-                                BLE beacon identifier this device advertises (uuid_major_minor)
-                            </p>
+                <div className={modalStyles.modal}>
+                    <div onClick={toggleModal} className={modalStyles.overlay}></div>
+                    <div className={modalStyles.content}>
+                        <div className={modalStyles.header}>
+                            {deviceCursor >= 0 ? <h2>Edit Device</h2> : <h2>Add Device</h2>}
+                        </div>
+                        <div className={modalStyles.body}>
+                            <label>Name</label>
                             <input
                                 type="text"
-                                value={beaconId}
-                                onChange={(e) => setBeaconId(e.target.value)}
-                                placeholder="e.g. a3f498e7-c46f-47b4-a767-7c3ad16044fc_100_40004"
-                                style={{ width: '100%' }}
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
                             />
-                        </fieldset>
 
-                        <p></p>
+                            <fieldset>
+                                <legend>Monitor (Entity ID)</legend>
+                                <p style={{ fontSize: '0.85em', margin: '4px 0 8px' }}>
+                                    HA sensor entity for this device's beacon monitor (e.g. phone running BLE scanner)
+                                </p>
+                                <EntityPicker
+                                    domain="sensor"
+                                    value={entityId}
+                                    onChange={(val) => {
+                                        setEntityId(val);
+                                        if (val.trim()) {
+                                            backend.CheckEntityId(val).then((result) => {
+                                                setEntityIDValid(result);
+                                            });
+                                        } else {
+                                            setEntityIDValid(true);
+                                        }
+                                    }}
+                                    label=""
+                                />
+                            </fieldset>
 
-                        {!hasAtLeastOneId && (
-                            <p style={{ color: 'red', fontSize: '0.85em' }}>
-                                At least one of Entity ID or Beacon ID is required
-                            </p>
-                        )}
+                            <fieldset>
+                                <legend>Beacon ID</legend>
+                                <p style={{ fontSize: '0.85em', margin: '4px 0 8px' }}>
+                                    BLE beacon identifier this device advertises (uuid_major_minor)
+                                </p>
+                                <input
+                                    type="text"
+                                    value={beaconId}
+                                    onChange={(e) => setBeaconId(e.target.value)}
+                                    placeholder="e.g. a3f498e7-c46f-47b4-a767-7c3ad16044fc_100_40004"
+                                    style={{ width: '100%' }}
+                                />
+                            </fieldset>
 
-                        <button onClick={handleSave} disabled={!hasAtLeastOneId || !name.trim()}>Save</button>
-                        <button onClick={toggleModal}>Cancel</button>
+                            {!hasAtLeastOneId && (
+                                <p className={modalStyles.errorText}>
+                                    At least one of Entity ID or Beacon ID is required
+                                </p>
+                            )}
+                        </div>
+                        <div className={modalStyles.footer}>
+                            <button className={btnStyles.secondary} onClick={toggleModal}>Cancel</button>
+                            <button className={btnStyles.primary} onClick={handleSave} disabled={!hasAtLeastOneId || !name.trim()}>Save</button>
+                        </div>
                     </div>
                 </div>
             )}

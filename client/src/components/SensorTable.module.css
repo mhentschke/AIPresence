@@ -1,0 +1,16 @@
+.wrapper {
+  overflow-x: auto;
+}
+
+.table {
+  composes: table from './Table.module.css';
+}
+
+.actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.checkbox {
+  cursor: pointer;
+}

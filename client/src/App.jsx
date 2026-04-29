@@ -9,6 +9,10 @@ import SensorEditModal from './components/SensorEditModal'
 import RoomTable from './components/RoomTable'
 import RoomEditModal from './components/RoomEditModal'
 import {Backend} from './Backend'
+import ErrorBoundary from './components/ErrorBoundary'
+import styles from './components/App.module.css'
+
+const TABS = ['Devices', 'Monitors', 'Sensors', 'Rooms'];
 
 function getElementFromId(list, field, id){
     for (let i = 0; i < list.length; i++){
@@ -17,10 +21,10 @@ function getElementFromId(list, field, id){
         }
     }
     return -1
-
 }
 
 function App() {
+    const [activeTab, setActiveTab] = useState('Devices')
     const [data, setData] = useState([{}])
     const [deviceEditModal, setDeviceEditModal] = useState(false)
     const [deviceTrainModal, setDeviceTrainModal] = useState(false)
@@ -43,7 +47,7 @@ function App() {
     useEffect(() => { roomDataRef.current = roomData; }, [roomData]);
 
     useEffect(() => {
-        Backend.GetDevices().then( 
+        Backend.GetDevices().then(
             data => {
                 setData(data)
                 console.log(data)
@@ -107,55 +111,80 @@ function App() {
         };
     }, [deviceEditModal, deviceTrainModal, monitorEditModal, sensorEditModal, roomEditModal]);
 
-    return (
-        <div>
-            <h1>Devices</h1>
-            <div className = "w3-responsive">
-                <DeviceTable data={data} setData={setData} deviceEditModal={setDeviceEditModal} deviceTrainModal={setDeviceTrainModal} deviceSelector={setDeviceCursor} backend={Backend}/>
-                <button onClick={() => {
-                        setDeviceCursor(-1)
-                        setDeviceEditModal(true)
-                    }}>Add Device</button>
-            </div> 
-            <div className = "w3-responsive">
-                <DeviceEditModal data={data} setData={setData} modal={deviceEditModal} setModal={setDeviceEditModal} deviceCursor={deviceCursor} backend={Backend}/>
-            </div>
-            <div className = "w3-responsive">
-                <DeviceTrainingModal devices={data} setDevices={setData} rooms={roomData} setRooms={setRoomData} modal={deviceTrainModal} setModal={setDeviceTrainModal} deviceCursor={deviceCursor} backend={Backend} getElementFromId={getElementFromId}/>
-            </div>
-            <h1>Monitors</h1>
-            <div className = "w3-responsive">
-                <MonitorTable data={monitorData} setData={setMonitorData} monitorEditModal={setMonitorEditModal} backend={Backend}/>
-                <button onClick={() => {
-                        setMonitorEditModal(true)
-                    }}>Add Monitor</button>
-            </div>
-            <div className = "w3-responsive">
-                <MonitorEditModal data={monitorData} setData={setMonitorData} modal={monitorEditModal} setModal={setMonitorEditModal} backend={Backend}/>
-            </div>
-            <h1>Sensors</h1>
-            <div className = "w3-responsive">
-                <SensorTable data={sensorData} setData={setSensorData} sensorEditModal={setSensorEditModal} sensorSelector={setSensorCursor} backend={Backend}/>
-                <button onClick={() => {
-                        setSensorCursor(-1)
-                        setSensorEditModal(true)
-                    }}>Add Sensor</button>
-            </div>
-            <div className = "w3-responsive">
-                <SensorEditModal data={sensorData} setData={setSensorData} modal={sensorEditModal} setModal={setSensorEditModal} sensorCursor={sensorCursor} backend={Backend}/>
-            </div>
-            <h1>Rooms</h1>
-            <div className = "w3-responsive">
-                <RoomTable data={roomData} setData={setRoomData} roomEditModal={setRoomEditModal} roomSelector={setRoomCursor} backend={Backend}/>
-                <button onClick={() => {
-                        setRoomCursor(-1)
-                        setRoomEditModal(true)
-                    }}>Add Room</button>
-            </div>
-            <div className = "w3-responsive">
-                <RoomEditModal data={roomData} setData={setRoomData} modal={roomEditModal} setModal={setRoomEditModal} roomCursor={roomCursor} backend={Backend}/>
-            </div>
+    const renderTabContent = () => {
+        switch (activeTab) {
+            case 'Devices':
+                return (
+                    <ErrorBoundary>
+                        <DeviceTable data={data} setData={setData} deviceEditModal={setDeviceEditModal} deviceTrainModal={setDeviceTrainModal} deviceSelector={setDeviceCursor} backend={Backend}/>
+                        <button className={styles.addButton} onClick={() => {
+                            setDeviceCursor(-1)
+                            setDeviceEditModal(true)
+                        }}>Add Device</button>
+                    </ErrorBoundary>
+                );
+            case 'Monitors':
+                return (
+                    <ErrorBoundary>
+                        <MonitorTable data={monitorData} setData={setMonitorData} monitorEditModal={setMonitorEditModal} backend={Backend}/>
+                        <button className={styles.addButton} onClick={() => {
+                            setMonitorEditModal(true)
+                        }}>Add Monitor</button>
+                    </ErrorBoundary>
+                );
+            case 'Sensors':
+                return (
+                    <ErrorBoundary>
+                        <SensorTable data={sensorData} setData={setSensorData} sensorEditModal={setSensorEditModal} sensorSelector={setSensorCursor} backend={Backend}/>
+                        <button className={styles.addButton} onClick={() => {
+                            setSensorCursor(-1)
+                            setSensorEditModal(true)
+                        }}>Add Sensor</button>
+                    </ErrorBoundary>
+                );
+            case 'Rooms':
+                return (
+                    <ErrorBoundary>
+                        <RoomTable data={roomData} setData={setRoomData} roomEditModal={setRoomEditModal} roomSelector={setRoomCursor} backend={Backend}/>
+                        <button className={styles.addButton} onClick={() => {
+                            setRoomCursor(-1)
+                            setRoomEditModal(true)
+                        }}>Add Room</button>
+                    </ErrorBoundary>
+                );
+            default:
+                return null;
+        }
+    };
 
+    return (
+        <div className={styles.appContainer}>
+            <header className={styles.header}>
+                <h1 className={styles.title}>AIPresence</h1>
+            </header>
+            <nav className={styles.tabBar}>
+                {TABS.map(tab => (
+                    <button
+                        key={tab}
+                        className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ''}`}
+                        onClick={() => setActiveTab(tab)}
+                    >
+                        {tab}
+                    </button>
+                ))}
+            </nav>
+            <main className={styles.content}>
+                <div className={styles.card}>
+                    {renderTabContent()}
+                </div>
+            </main>
+
+            {/* Modals render regardless of active tab so they can open/close freely */}
+            <DeviceEditModal data={data} setData={setData} modal={deviceEditModal} setModal={setDeviceEditModal} deviceCursor={deviceCursor} backend={Backend}/>
+            <DeviceTrainingModal devices={data} setDevices={setData} rooms={roomData} setRooms={setRoomData} modal={deviceTrainModal} setModal={setDeviceTrainModal} deviceCursor={deviceCursor} backend={Backend} getElementFromId={getElementFromId}/>
+            <MonitorEditModal data={monitorData} setData={setMonitorData} modal={monitorEditModal} setModal={setMonitorEditModal} backend={Backend}/>
+            <SensorEditModal data={sensorData} setData={setSensorData} modal={sensorEditModal} setModal={setSensorEditModal} sensorCursor={sensorCursor} backend={Backend}/>
+            <RoomEditModal data={roomData} setData={setRoomData} modal={roomEditModal} setModal={setRoomEditModal} roomCursor={roomCursor} backend={Backend}/>
         </div>
     )
 }

@@ -1,0 +1,21 @@
+.helpText {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: var(--spacing-xs) 0 var(--spacing-sm);
+}
+
+.beaconInput {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.beaconInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}

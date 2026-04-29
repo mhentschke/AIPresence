@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import "./Modal.css"
+import { useToast } from './ToastContext';
+import modalStyles from './Modal.module.css';
+import btnStyles from './Button.module.css';
 import EntityPicker from './EntityPicker';
 
 
 
 const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend}) => {
+
+    const { addToast } = useToast();
 
     const toggleModal = () => {
         setModal(!modal)
@@ -38,9 +42,10 @@ const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend}
                     updatedData.push(sensor);
                     toggleModal();
                     setData(updatedData);
+                    addToast("Sensor created successfully", "success");
                 } else {
                     setEntityIDValid(false);
-                    alert("Entity ID does not Exist in Home Assistant");
+                    addToast("Entity ID does not exist in Home Assistant", "error");
                 }
             } catch (err) {
                 console.error("Error creating sensor:", err);
@@ -57,9 +62,10 @@ const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend}
                     updatedData[sensorCursor] = sensor;
                     toggleModal();
                     setData(updatedData);
+                    addToast("Sensor updated successfully", "success");
                 } else {
                     setEntityIDValid(false);
-                    alert("Entity ID does not Exist in Home Assistant");
+                    addToast("Entity ID does not exist in Home Assistant", "error");
                 }
             } catch (err) {
                 console.error("Error updating sensor:", err);
@@ -68,25 +74,30 @@ const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend}
     };
 
     return ( <>
-        {modal && (<div className='modal'>
-            <div onClick={toggleModal}className="overlay"></div>
-            <div className="modal-content">
-                {sensorCursor>=0 && (<h2>Edit Sensor</h2>)}
-                {sensorCursor<0 && (<h2>Add Sensor</h2>)}
-                <EntityPicker
-                    domain="binary_sensor"
-                    value={entityId}
-                    onChange={(val) => {
-                        setEntityId(val);
-                        backend.CheckEntityId(val).then((result) => {
-                            setEntityIDValid(result);
-                        });
-                    }}
-                    label={"Entity ID " + entityIDValid}
-                />
-                <p></p>
-                <button onClick={handleSave}>Save</button>
-                <button onClick={toggleModal}>Cancel</button>
+        {modal && (<div className={modalStyles.modal}>
+            <div onClick={toggleModal} className={modalStyles.overlay}></div>
+            <div className={modalStyles.content}>
+                <div className={modalStyles.header}>
+                    {sensorCursor>=0 && (<h2>Edit Sensor</h2>)}
+                    {sensorCursor<0 && (<h2>Add Sensor</h2>)}
+                </div>
+                <div className={modalStyles.body}>
+                    <EntityPicker
+                        domain="binary_sensor"
+                        value={entityId}
+                        onChange={(val) => {
+                            setEntityId(val);
+                            backend.CheckEntityId(val).then((result) => {
+                                setEntityIDValid(result);
+                            });
+                        }}
+                        label={"Entity ID " + entityIDValid}
+                    />
+                </div>
+                <div className={modalStyles.footer}>
+                    <button className={btnStyles.secondary} onClick={toggleModal}>Cancel</button>
+                    <button className={btnStyles.primary} onClick={handleSave}>Save</button>
+                </div>
             </div>
         </div>
         )}

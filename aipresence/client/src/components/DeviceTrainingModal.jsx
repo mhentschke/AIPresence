@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from './ToastContext';
+import SignalChart from './SignalChart';
 import modalStyles from './Modal.module.css';
 import btnStyles from './Button.module.css';
 import styles from './DeviceTrainingModal.module.css';
@@ -13,6 +14,7 @@ const DeviceTrainingModal = ({ devices, setDevices, rooms, modal, setModal, devi
     const [roomTrainingSamples, setRoomTrainingSamples] = useState(0);
     const [training, setTraining] = useState(false);
     const [roomIndex, setRoomIndex] = useState(-1);
+    const [signalBars, setSignalBars] = useState([]);
 
     const intervalRef = useRef(null);
     const currentRoomIdRef = useRef(null);
@@ -25,6 +27,7 @@ const DeviceTrainingModal = ({ devices, setDevices, rooms, modal, setModal, devi
             setRoomTrainingProgress(0);
             setRoomTrainingSamples(0);
             setRoomIndex(-1);
+            setSignalBars([]);
             currentRoomIdRef.current = null;
         }
     }, [modal]);
@@ -37,15 +40,29 @@ const DeviceTrainingModal = ({ devices, setDevices, rooms, modal, setModal, devi
     }, []);
 
     const pollProgress = useCallback((deviceId) => {
-        backend.GetTrainingProgress(deviceId).then((result) => {
+        const progressPromise = backend.GetTrainingProgress(deviceId);
+        const signalPromise = backend.GetSignalData(deviceId);
+
+        Promise.all([progressPromise, signalPromise]).then(([progressResult, signalResult]) => {
+            // Update training progress
             const rid = currentRoomIdRef.current;
-            if (result !== null && rid && rid in result) {
-                setRoomTrainingProgress(result[rid]["percentage"] * 100);
-                setRoomTrainingSamples(result[rid]["count"]);
+            if (progressResult !== null && rid && rid in progressResult) {
+                setRoomTrainingProgress(progressResult[rid]["percentage"] * 100);
+                setRoomTrainingSamples(progressResult[rid]["count"]);
             } else {
                 setRoomTrainingProgress(0);
                 setRoomTrainingSamples(0);
             }
+
+            // Build signal bars from current readings + training averages overlay
+            const signals = signalResult?.signals || {};
+            const averages = progressResult?.training_averages || {};
+            const bars = Object.keys(signals).map((key) => ({
+                label: key,
+                value: signals[key],
+                overlay: averages[key] != null ? averages[key] : undefined,
+            }));
+            setSignalBars(bars);
         }).catch(() => {
             // Ignore polling errors silently
         });
@@ -155,6 +172,11 @@ const DeviceTrainingModal = ({ devices, setDevices, rooms, modal, setModal, devi
                                     <p className={styles.statusText}>Training Progress: {roomTrainingProgress.toFixed(0)}% - {roomTrainingSamples} samples</p>
                                     <p className={styles.statusText}>Current Room: {roomIndex >= 0 ? rooms[roomIndex].name : "Not Training"}</p>
                                     <p className={styles.statusText}>Old Model Prediction: {currentRoomIdRef.current ? (() => { const el = getElementFromId(rooms, "id", currentRoomIdRef.current); return el !== -1 ? el.name : "-"; })() : "Not Training"}</p>
+                                    <SignalChart
+                                        bars={signalBars}
+                                        title="Signal Readings"
+                                        overlayLabel="Training Avg"
+                                    />
                                 </div>
                             )}
                         </div>

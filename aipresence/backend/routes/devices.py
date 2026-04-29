@@ -2,6 +2,7 @@ import os
 import pickle
 import uuid
 
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..classes import Device, Model
@@ -255,6 +256,33 @@ def get_model(device_id: str, devices: dict = Depends(get_devices)):
     return _device_to_response(device_id, device).model
 
 
+@router.get("/{device_id}/signal_data")
+def get_signal_data(device_id: str, devices: dict = Depends(get_devices)):
+    if device_id not in devices:
+        raise HTTPException(status_code=404, detail="Device not found")
+    device = devices[device_id]
+    if device.data_gatherer is None:
+        return {"signals": {}}
+    try:
+        signals = device.data_gatherer()
+    except Exception:
+        signals = {}
+    return {"signals": signals}
+
+
+def _compute_training_averages(model) -> dict:
+    """Compute mean of each numeric feature column from the model's training data."""
+    if model is None or model.data.empty:
+        return {}
+    df = model.data
+    feature_cols = [c for c in df.columns if c != "room"]
+    if not feature_cols:
+        return {}
+    numeric = df[feature_cols].apply(pd.to_numeric, errors="coerce")
+    means = numeric.mean(skipna=True)
+    return {k: v for k, v in means.items() if pd.notna(v)}
+
+
 @router.get("/{device_id}/model/training_progress")
 def get_training_progress(device_id: str, devices: dict = Depends(get_devices)):
     if device_id not in devices:
@@ -264,11 +292,13 @@ def get_training_progress(device_id: str, devices: dict = Depends(get_devices)):
     if device.training and device.new_model is not None:
         progress = device.new_model.get_training_progress()
         if not progress:
-            return {}
+            return {"training_averages": _compute_training_averages(device.new_model)}
+        progress["training_averages"] = _compute_training_averages(device.new_model)
         return progress
     if device.model is not None:
         progress = device.model.get_training_progress()
         if not progress:
-            return {}
+            return {"training_averages": _compute_training_averages(device.model)}
+        progress["training_averages"] = _compute_training_averages(device.model)
         return progress
     raise HTTPException(status_code=400, detail="Device is not training")

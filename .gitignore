@@ -13,6 +13,9 @@ aipresence/client/.pnp
 # testing
 aipresence/client/coverage
 
+# vite cache
+aipresence/client/.vite
+
 # production
 aipresence/client/build
 

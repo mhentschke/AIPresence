@@ -8,15 +8,18 @@ const MonitorEditModal = ({ data, setData, modal, setModal, backend }) => {
     const { addToast } = useToast();
     const [entityId, setEntityId] = useState("");
     const [entityIDValid, setEntityIDValid] = useState(false);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (modal) {
             setEntityId("");
             setEntityIDValid(false);
+            setSaving(false);
         }
     }, [modal]);
 
     const handleSave = async () => {
+        setSaving(true);
         try {
             const exists = await backend.CheckEntityId(entityId);
             if (exists) {
@@ -31,6 +34,8 @@ const MonitorEditModal = ({ data, setData, modal, setModal, backend }) => {
             }
         } catch (err) {
             addToast("Error adding monitor: " + err.message, "error");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -58,7 +63,7 @@ const MonitorEditModal = ({ data, setData, modal, setModal, backend }) => {
                         </div>
                         <div className={modalStyles.footer}>
                             <button className={btnStyles.secondary} onClick={() => setModal(false)}>Cancel</button>
-                            <button className={btnStyles.primary} onClick={handleSave}>Save</button>
+                            <button className={btnStyles.primary} onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
                         </div>
                     </div>
                 </div>

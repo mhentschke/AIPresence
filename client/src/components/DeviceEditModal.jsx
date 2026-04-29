@@ -16,6 +16,7 @@ const DeviceEditModal = ({ data, setData, modal, setModal, deviceCursor, backend
     const [beaconId, setBeaconId] = useState("");
     const [name, setName] = useState("");
     const [entityIDValid, setEntityIDValid] = useState(true);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (modal && deviceCursor >= 0 && data[deviceCursor]) {
@@ -24,11 +25,13 @@ const DeviceEditModal = ({ data, setData, modal, setModal, deviceCursor, backend
             setEntityId(device.entity_id || "");
             setBeaconId(device.beacon_id || "");
             setEntityIDValid(true);
+            setSaving(false);
         } else if (modal && deviceCursor === -1) {
             setName("");
             setEntityId("");
             setBeaconId("");
             setEntityIDValid(true);
+            setSaving(false);
         }
     }, [modal, deviceCursor, data]);
 
@@ -64,6 +67,7 @@ const DeviceEditModal = ({ data, setData, modal, setModal, deviceCursor, backend
 
         const updatedData = JSON.parse(JSON.stringify(data));
 
+        setSaving(true);
         try {
             if (deviceCursor === -1) {
                 const result = await backend.CreateDevice(device);
@@ -80,6 +84,8 @@ const DeviceEditModal = ({ data, setData, modal, setModal, deviceCursor, backend
             setData(updatedData);
         } catch (err) {
             addToast("Error saving device: " + err.message, "error");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -144,7 +150,7 @@ const DeviceEditModal = ({ data, setData, modal, setModal, deviceCursor, backend
                         </div>
                         <div className={modalStyles.footer}>
                             <button className={btnStyles.secondary} onClick={toggleModal}>Cancel</button>
-                            <button className={btnStyles.primary} onClick={handleSave} disabled={!hasAtLeastOneId || !name.trim()}>Save</button>
+                            <button className={btnStyles.primary} onClick={handleSave} disabled={saving || !hasAtLeastOneId || !name.trim()}>{saving ? 'Saving...' : 'Save'}</button>
                         </div>
                     </div>
                 </div>

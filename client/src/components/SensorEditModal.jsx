@@ -16,21 +16,25 @@ const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend}
 
     const [entityId, setEntityId] = useState("");
     const [entityIDValid, setEntityIDValid] = useState(false);
+    const [saving, setSaving] = useState(false);
 
     // Initialize state from selected sensor when editing, reset when creating
     useEffect(() => {
         if (modal && sensorCursor >= 0 && data[sensorCursor]) {
             setEntityId(data[sensorCursor].entity_id || "");
             setEntityIDValid(true);
+            setSaving(false);
         } else if (modal && sensorCursor === -1) {
             setEntityId("");
             setEntityIDValid(false);
+            setSaving(false);
         }
     }, [modal, sensorCursor, data]);
 
     const handleSave = async () => {
         let sensor = {};
         const updatedData = JSON.parse(JSON.stringify(data));
+        setSaving(true);
         if(sensorCursor === -1){ // Creating
             try {
                 const exists = await backend.CheckEntityId(entityId);
@@ -49,6 +53,8 @@ const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend}
                 }
             } catch (err) {
                 console.error("Error creating sensor:", err);
+            } finally {
+                setSaving(false);
             }
         }
         else{ // Updating
@@ -69,6 +75,8 @@ const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend}
                 }
             } catch (err) {
                 console.error("Error updating sensor:", err);
+            } finally {
+                setSaving(false);
             }
         }
     };
@@ -96,7 +104,7 @@ const SensorEditModal = ({data, setData, modal, setModal, sensorCursor, backend}
                 </div>
                 <div className={modalStyles.footer}>
                     <button className={btnStyles.secondary} onClick={toggleModal}>Cancel</button>
-                    <button className={btnStyles.primary} onClick={handleSave}>Save</button>
+                    <button className={btnStyles.primary} onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
                 </div>
             </div>
         </div>

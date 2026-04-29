@@ -15,21 +15,25 @@ const RoomEditModal = ({data, setData, modal, setModal, roomCursor, backend}) =>
 
     const [name, setName] = useState("");
     const [color, setColor] = useState("#ffffff");
+    const [saving, setSaving] = useState(false);
 
     // Initialize state from selected room when editing, reset to defaults when creating
     useEffect(() => {
         if (modal && roomCursor >= 0 && data[roomCursor]) {
             setName(data[roomCursor].name || "");
             setColor(data[roomCursor].color || "#ffffff");
+            setSaving(false);
         } else if (modal && roomCursor === -1) {
             setName("");
             setColor("#ffffff");
+            setSaving(false);
         }
     }, [modal, roomCursor, data]);
 
     const handleSave = async () => {
         const room = {};
         const updatedData = JSON.parse(JSON.stringify(data));
+        setSaving(true);
         if(roomCursor === -1){ // Creating
             room.name = name;
             room.color = color;
@@ -42,6 +46,8 @@ const RoomEditModal = ({data, setData, modal, setModal, roomCursor, backend}) =>
                 addToast("Room created successfully", "success");
             } catch (err) {
                 console.error("Error creating room:", err);
+            } finally {
+                setSaving(false);
             }
         }
         else{ // Updating
@@ -56,6 +62,8 @@ const RoomEditModal = ({data, setData, modal, setModal, roomCursor, backend}) =>
                 addToast("Room updated successfully", "success");
             } catch (err) {
                 console.error("Error updating room:", err);
+            } finally {
+                setSaving(false);
             }
         }
     }
@@ -88,7 +96,7 @@ const RoomEditModal = ({data, setData, modal, setModal, roomCursor, backend}) =>
                 </div>
                 <div className={modalStyles.footer}>
                     <button className={btnStyles.secondary} onClick={toggleModal}>Cancel</button>
-                    <button className={btnStyles.primary} onClick={handleSave}>Save</button>
+                    <button className={btnStyles.primary} onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
                 </div>
             </div>
         </div>

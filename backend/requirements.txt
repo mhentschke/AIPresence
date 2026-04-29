@@ -1,0 +1,8 @@
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.34,<1.0
+pydantic>=2.11,<3.0
+pydantic-settings>=2.9,<3.0
+python-dotenv>=1.1,<2.0
+homeassistant-api>=4.3,<7.0
+scikit-learn>=1.7,<2.0
+pandas>=2.3,<4.0

@@ -28,7 +28,8 @@ jobs:
         run: |
           python -m venv backend/.venv
           source backend/.venv/bin/activate
-          pip install fastapi uvicorn[standard] pydantic pydantic-settings python-dotenv homeassistant_api scikit-learn pandas pytest httpx
+          pip install -r backend/requirements.txt
+          pip install pytest httpx
       - name: Run tests
         run: |
           source backend/.venv/bin/activate

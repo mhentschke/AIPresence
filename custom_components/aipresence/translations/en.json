@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to AIPresence Backend",
+        "description": "Enter the URL of your AIPresence backend. If the add-on is running, the URL is pre-filled automatically.",
+        "data": {
+          "backend_url": "Backend URL"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the AIPresence backend. Check the URL and ensure the backend is running."
+    },
+    "abort": {
+      "already_configured": "AIPresence is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "AIPresence Options",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "beacon_timeout": "Beacon timeout (seconds)"
+        }
+      }
+    }
+  }
+}

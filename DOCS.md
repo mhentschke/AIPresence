@@ -104,3 +104,54 @@ If AIPresence doesn't appear under **Local add-ons** after copying the files:
 4. **Check Supervisor logs.** Go to **Settings → System → Logs**, select
    **Supervisor** from the dropdown, and look for errors related to add-on
    discovery or `config.yaml` parsing.
+
+---
+
+# AIPresence — HA Integration Installation
+
+The AIPresence **integration** exposes prediction results as native HA entities
+(`device_tracker.*`, room sensors, confidence sensors) and provides a BLE proxy
+scanner for ESP32 Bluetooth proxies. It is separate from the add-on above —
+the add-on runs the backend, the integration connects HA to it.
+
+## Option A: Install via HACS (recommended)
+
+1. Open HACS in your Home Assistant UI.
+2. Go to **Integrations**.
+3. Click the overflow menu (⋮) in the top-right and select
+   **Custom repositories**.
+4. Enter the repository URL:
+   ```
+   https://github.com/MHentschke/aipresence
+   ```
+   Select **Integration** as the category, then click **Add**.
+5. Search for **AIPresence** in the HACS integration list and click
+   **Download**.
+6. Restart Home Assistant.
+7. Go to **Settings → Devices & Services → Add Integration**, search for
+   **AIPresence**, and follow the config flow.
+
+## Option B: Manual installation
+
+1. Download or clone this repository.
+2. Copy the `custom_components/aipresence/` directory into your Home Assistant
+   `config/custom_components/` folder:
+   ```
+   <ha-config>/
+   └── custom_components/
+       └── aipresence/
+           ├── __init__.py
+           ├── manifest.json
+           ├── config_flow.py
+           ├── const.py
+           ├── coordinator.py
+           ├── device_tracker.py
+           ├── sensor.py
+           ├── scanner.py
+           ├── strings.json
+           └── translations/
+               └── en.json
+   ```
+3. Restart Home Assistant.
+4. Go to **Settings → Devices & Services → Add Integration**, search for
+   **AIPresence**, and follow the config flow.

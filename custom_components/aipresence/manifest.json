@@ -1,0 +1,11 @@
+{
+  "domain": "aipresence",
+  "name": "AIPresence",
+  "codeowners": ["@MHentschke"],
+  "config_flow": true,
+  "dependencies": ["bluetooth", "homeassistant"],
+  "documentation": "https://github.com/MHentschke/aipresence",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/MHentschke/aipresence/issues",
+  "version": "0.1.0"
+}

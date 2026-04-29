@@ -5,7 +5,8 @@ from contextlib import asynccontextmanager
 
 import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .classes import (
     _BEACON_MONITOR_META_KEYS,
@@ -269,3 +270,21 @@ def reload_config(request: Request, settings=Depends(get_settings)):
             logger.warning("Config '%s' changed in .env but requires restart to take effect", key)
 
     return {"reloaded": changed}
+
+
+# --- Static file serving (React SPA) ---
+# Must be registered AFTER all API routes so they take priority.
+STATIC_DIR = os.environ.get("STATIC_DIR", "client/dist")
+
+if os.path.isdir(STATIC_DIR):
+    _assets_dir = os.path.join(STATIC_DIR, "assets")
+    if os.path.isdir(_assets_dir):
+        app.mount("/assets", StaticFiles(directory=_assets_dir), name="assets")
+
+    @app.get("/{path:path}")
+    async def serve_spa(path: str):
+        """Serve static files from the built SPA, falling back to index.html for client-side routing."""
+        file_path = os.path.join(STATIC_DIR, path)
+        if path and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(STATIC_DIR, "index.html"))

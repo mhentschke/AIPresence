@@ -10,6 +10,7 @@
   box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 
 .title {
@@ -17,6 +18,28 @@
   font-size: var(--font-size-xl);
   font-weight: 600;
   color: var(--color-text-primary);
+}
+
+.headerActions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.headerBtn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.headerBtn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-text-secondary);
 }
 
 .tabBar {

@@ -278,4 +278,40 @@ export class Backend {
     }
     return response.json();
   }
+
+  // ---- Backup & Restore ----
+
+  static async CreateBackup() {
+    const response = await fetch(rel('/admin/backup'));
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Backup failed: ${text}`);
+    }
+    const blob = await response.blob();
+    const disposition = response.headers.get('Content-Disposition');
+    let filename = 'aipresence_backup.tar.gz';
+    if (disposition) {
+      const match = disposition.match(/filename=(.+)/);
+      if (match) filename = match[1];
+    }
+    // Trigger browser download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  static async RestoreBackup(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const resp = await apiCall('/admin/restore', {
+      method: 'POST',
+      body: formData,
+    });
+    return resp.json();
+  }
 }

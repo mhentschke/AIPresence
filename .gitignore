@@ -2,19 +2,19 @@ __pycache__
 *.pyc
 data/*
 .env
-backend/.env
+aipresence/backend/.env
 .venv
-backend/.venv
+aipresence/backend/.venv
 
-client/node_modules
-client/.pnp
+aipresence/client/node_modules
+aipresence/client/.pnp
 .pnp.js
 
 # testing
-client/coverage
+aipresence/client/coverage
 
 # production
-client/build
+aipresence/client/build
 
 # misc
 .DS_Store

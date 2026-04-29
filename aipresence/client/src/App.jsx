@@ -10,6 +10,7 @@ import RoomTable from './components/RoomTable'
 import RoomEditModal from './components/RoomEditModal'
 import {Backend} from './Backend'
 import ErrorBoundary from './components/ErrorBoundary'
+import { useToast } from './components/ToastContext'
 import styles from './components/App.module.css'
 import spinnerStyles from './components/LoadingSpinner.module.css'
 
@@ -25,6 +26,7 @@ function getElementFromId(list, field, id){
 }
 
 function App() {
+    const { addToast } = useToast()
     const [activeTab, setActiveTab] = useState('Devices')
     const [data, setData] = useState([])
     const [deviceEditModal, setDeviceEditModal] = useState(false)
@@ -44,6 +46,7 @@ function App() {
     const [sensorsLoading, setSensorsLoading] = useState(true)
     const [roomsLoading, setRoomsLoading] = useState(true)
 
+    const restoreInputRef = useRef(null);
     const intervalRef = useRef(undefined);
     const dataRef = useRef(data);
     const roomDataRef = useRef(roomData);
@@ -51,6 +54,35 @@ function App() {
     // Keep refs in sync with latest state
     useEffect(() => { dataRef.current = data; }, [data]);
     useEffect(() => { roomDataRef.current = roomData; }, [roomData]);
+
+    const reloadAllData = () => {
+        Backend.GetDevices().then(setData).finally(() => setDevicesLoading(false))
+        Backend.GetBeaconMonitors().then(setMonitorData).finally(() => setMonitorsLoading(false))
+        Backend.GetSensors().then(setSensorData).finally(() => setSensorsLoading(false))
+        Backend.GetRooms().then(setRoomData).finally(() => setRoomsLoading(false))
+    }
+
+    const handleBackup = async () => {
+        try {
+            await Backend.CreateBackup()
+            addToast('Backup downloaded successfully', 'success')
+        } catch (err) {
+            addToast('Backup failed: ' + err.message, 'error')
+        }
+    }
+
+    const handleRestore = async (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        e.target.value = ''
+        try {
+            await Backend.RestoreBackup(file)
+            addToast('Restore completed successfully', 'success')
+            reloadAllData()
+        } catch (err) {
+            addToast('Restore failed: ' + err.message, 'error')
+        }
+    }
 
     useEffect(() => {
         Backend.GetDevices().then(
@@ -189,6 +221,17 @@ function App() {
         <div className={styles.appContainer}>
             <header className={styles.header}>
                 <h1 className={styles.title}>AIPresence</h1>
+                <div className={styles.headerActions}>
+                    <button className={styles.headerBtn} onClick={handleBackup}>Backup</button>
+                    <button className={styles.headerBtn} onClick={() => restoreInputRef.current?.click()}>Restore</button>
+                    <input
+                        ref={restoreInputRef}
+                        type="file"
+                        accept=".tar.gz,.tgz"
+                        style={{ display: 'none' }}
+                        onChange={handleRestore}
+                    />
+                </div>
             </header>
             <nav className={styles.tabBar}>
                 {TABS.map(tab => (

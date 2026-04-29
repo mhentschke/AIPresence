@@ -13,12 +13,12 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install ruff
-      - run: ruff check backend/
+      - run: ruff check aipresence/backend/
 
   test-backend:
     runs-on: ubuntu-latest
     env:
-      PYTHONPATH: ${{ github.workspace }}
+      PYTHONPATH: ${{ github.workspace }}/aipresence
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,14 +26,14 @@ jobs:
           python-version: "3.13"
       - name: Create venv and install dependencies
         run: |
-          python -m venv backend/.venv
-          source backend/.venv/bin/activate
-          pip install -r backend/requirements.txt
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r aipresence/backend/requirements.txt
           pip install pytest httpx
       - name: Run tests
         run: |
-          source backend/.venv/bin/activate
-          pytest backend/tests/ -v
+          source .venv/bin/activate
+          pytest aipresence/backend/tests/ -v
 
   test-frontend:
     runs-on: ubuntu-latest
@@ -43,9 +43,9 @@ jobs:
         with:
           node-version: "20"
       - run: npm ci
-        working-directory: client
+        working-directory: aipresence/client
       - run: npx vitest run
-        working-directory: client
+        working-directory: aipresence/client
 
   build-frontend:
     runs-on: ubuntu-latest
@@ -55,12 +55,12 @@ jobs:
         with:
           node-version: "20"
       - run: npm ci
-        working-directory: client
+        working-directory: aipresence/client
       - run: npm run build
-        working-directory: client
+        working-directory: aipresence/client
 
   build-docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t aipresence:ci .
+      - run: docker build -t aipresence:ci -f aipresence/Dockerfile aipresence

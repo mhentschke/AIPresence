@@ -18,5 +18,8 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    // Use relative paths so assets load correctly behind HA ingress proxy
+    // (ingress serves the app under /api/hassio_ingress/<token>/, not /)
   },
+  base: './',
 })

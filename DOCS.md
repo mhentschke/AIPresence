@@ -2,7 +2,8 @@
 
 ## Prerequisites
 
-- A running Home Assistant instance (HA OS, HA Supervised, or HA Container)
+- A running Home Assistant instance (**HA OS** or **HA Supervised** only —
+  local add-ons are not supported on HA Container)
 - SSH or file-system access to the HA host
 - The **Samba share** or **SSH** add-on installed (for copying files)
 
@@ -76,3 +77,30 @@ Then go to **Settings → Add-ons → AIPresence** and click **Rebuild**.
 The add-on stores its data (SQLite database, trained models, training CSVs) in
 `/data` inside the container, which the Supervisor maps to persistent storage.
 Your data survives add-on restarts and rebuilds.
+
+## Troubleshooting
+
+### Add-on not showing in the store
+
+If AIPresence doesn't appear under **Local add-ons** after copying the files:
+
+1. **Check your HA installation type.** Go to **Settings → System → Repairs →
+   ⋮ → System Information**. Local add-ons only work on **Home Assistant OS**
+   and **Home Assistant Supervised**. If you're running **HA Container**, you
+   need to add a custom repository URL instead.
+
+2. **Verify the directory structure.** SSH into the host and run:
+   ```bash
+   ls /addons/aipresence/config.yaml
+   ```
+   That file must exist at exactly that path. A common mistake when cloning is
+   ending up with a nested directory like `/addons/aipresence/aipresence/` —
+   make sure `config.yaml` is directly inside `/addons/aipresence/`.
+
+3. **Force a rescan.** In the Add-on Store, open the overflow menu (⋮) in the
+   top-right corner and select **Check for updates**. Alternatively, restart
+   the Supervisor: **Settings → System → ⋮ → Restart Supervisor**.
+
+4. **Check Supervisor logs.** Go to **Settings → System → Logs**, select
+   **Supervisor** from the dropdown, and look for errors related to add-on
+   discovery or `config.yaml` parsing.

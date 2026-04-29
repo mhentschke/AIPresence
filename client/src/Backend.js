@@ -1,5 +1,17 @@
+/**
+ * Resolve API paths relative to the current page URL.
+ * In HA ingress the app is served under /api/hassio_ingress/<token>/,
+ * so absolute paths like "/devices" would miss the prefix.
+ * Using a relative path (no leading slash) lets the browser resolve
+ * against the current <base> or page URL automatically.
+ */
+function rel(path) {
+  // Strip leading slash so the browser resolves relative to the page origin
+  return path.startsWith('/') ? path.slice(1) : path;
+}
+
 async function apiCall(url, options = {}) {
-  const response = await fetch(url, options);
+  const response = await fetch(rel(url), options);
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`API error ${response.status}: ${text}`);
@@ -44,7 +56,7 @@ export class Backend {
   }
 
   static async CheckEntityId(entityId) {
-    const response = await fetch('/device/check_entity_id/' + entityId);
+    const response = await fetch(rel('/device/check_entity_id/' + entityId));
     return response.status === 200;
   }
 
@@ -80,7 +92,7 @@ export class Backend {
   }
 
   static async GetDeviceLocation(device_id) {
-    const response = await fetch('/devices/' + device_id + '/location');
+    const response = await fetch(rel('/devices/' + device_id + '/location'));
     if (response.ok) {
       return response.json();
     }
@@ -221,7 +233,7 @@ export class Backend {
   // ---- Training ----
 
   static async GetTrainingProgress(device_id) {
-    const response = await fetch('/devices/' + device_id + '/model/training_progress');
+    const response = await fetch(rel('/devices/' + device_id + '/model/training_progress'));
     if (response.ok) {
       return response.json();
     }
@@ -259,7 +271,7 @@ export class Backend {
 
   static async GetHAEntities(domain) {
     const url = domain ? `/ha/entities?domain=${domain}` : '/ha/entities';
-    const response = await fetch(url);
+    const response = await fetch(rel(url));
     if (response.status === 503) return null;
     if (!response.ok) {
       throw new Error(`API error ${response.status}`);

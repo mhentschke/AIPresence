@@ -58,3 +58,9 @@ jobs:
         working-directory: client
       - run: npm run build
         working-directory: client
+
+  build-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t aipresence:ci .

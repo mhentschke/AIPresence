@@ -31,7 +31,25 @@ for name in _HA_MODULES:
 # ---------------------------------------------------------------------------
 
 ce = sys.modules["homeassistant.config_entries"]
-ce.ConfigEntry = type("ConfigEntry", (), {})
+
+
+class _ConfigEntry:
+    """Minimal stub for ConfigEntry."""
+
+    def __init__(self):
+        self.data = {}
+        self.options = {}
+        self.entry_id = "test_entry_id"
+        self._unload_callbacks = []
+
+    def async_on_unload(self, callback):
+        self._unload_callbacks.append(callback)
+
+    def add_update_listener(self, listener):
+        return listener
+
+
+ce.ConfigEntry = _ConfigEntry
 
 
 def _noop_init_subclass(cls, **kw):
@@ -99,12 +117,21 @@ class _DataUpdateCoordinator:
         self.update_interval = update_interval
         self.data = None
         self.last_update_success = True
+        self._listeners: list = []
 
     async def async_config_entry_first_refresh(self):
         self.data = await self._async_update_data()
 
     async def _async_update_data(self):
         raise NotImplementedError
+
+    def async_add_listener(self, update_callback):
+        self._listeners.append(update_callback)
+
+        def remove_listener():
+            self._listeners.remove(update_callback)
+
+        return remove_listener
 
 
 class _UpdateFailed(Exception):
@@ -232,3 +259,38 @@ _helpers_update_coordinator.CoordinatorEntity = type(
 
 ha_const = sys.modules["homeassistant.const"]
 ha_const.PERCENTAGE = "%"
+
+
+class _Platform:
+    """Minimal stub for homeassistant.const.Platform."""
+
+    DEVICE_TRACKER = "device_tracker"
+    SENSOR = "sensor"
+
+
+ha_const.Platform = _Platform
+
+# ---------------------------------------------------------------------------
+# Entity registry stub
+# ---------------------------------------------------------------------------
+
+_helpers_entity_registry = ModuleType("homeassistant.helpers.entity_registry")
+_helpers_entity_registry.__path__ = []
+sys.modules["homeassistant.helpers.entity_registry"] = _helpers_entity_registry
+
+
+class _EntityRegistry:
+    """Minimal stub for EntityRegistry."""
+
+    def __init__(self):
+        self._entities: dict[str, str] = {}  # unique_id -> entity_id
+
+    def async_get_entity_id(self, domain, platform, unique_id):
+        return self._entities.get(unique_id)
+
+    def async_remove(self, entity_id):
+        self._entities = {k: v for k, v in self._entities.items() if v != entity_id}
+
+
+_helpers_entity_registry.async_get = MagicMock(return_value=_EntityRegistry())
+_helpers_entity_registry.EntityRegistry = _EntityRegistry

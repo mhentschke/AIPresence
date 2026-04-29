@@ -32,9 +32,8 @@
   content: '';
   display: inline-block;
   width: 12px;
-  height: 8px;
+  height: 2px;
   background: var(--color-warning);
-  border-radius: 2px;
   margin-right: var(--spacing-xs);
   vertical-align: middle;
 }
@@ -51,6 +50,10 @@
   gap: var(--spacing-sm);
 }
 
+.rowInactive {
+  opacity: 0.45;
+}
+
 .label {
   flex: 0 0 180px;
   font-size: var(--font-size-sm);
@@ -58,6 +61,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: monospace;
 }
 
 .track {
@@ -76,19 +80,19 @@
   transition: width 0.3s ease;
 }
 
-.overlay {
+/* Training average overlay — thin vertical line */
+.overlayLine {
   position: absolute;
   top: 0;
-  width: 3px;
+  width: 2px;
   height: 100%;
   background: var(--color-warning);
-  border-radius: 1px;
   transform: translateX(-50%);
   transition: left 0.3s ease;
 }
 
 .value {
-  flex: 0 0 50px;
+  flex: 0 0 40px;
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
   text-align: right;

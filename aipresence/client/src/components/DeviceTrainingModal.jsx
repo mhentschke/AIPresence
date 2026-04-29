@@ -18,6 +18,8 @@ const DeviceTrainingModal = ({ devices, setDevices, rooms, modal, setModal, devi
 
     const intervalRef = useRef(null);
     const currentRoomIdRef = useRef(null);
+    // Track all signal keys ever seen so bars don't pop in/out
+    const knownKeysRef = useRef(new Set());
 
     // Reset all training state when modal opens
     useEffect(() => {
@@ -28,6 +30,7 @@ const DeviceTrainingModal = ({ devices, setDevices, rooms, modal, setModal, devi
             setRoomTrainingSamples(0);
             setRoomIndex(-1);
             setSignalBars([]);
+            knownKeysRef.current = new Set();
             currentRoomIdRef.current = null;
         }
     }, [modal]);
@@ -54,12 +57,22 @@ const DeviceTrainingModal = ({ devices, setDevices, rooms, modal, setModal, devi
                 setRoomTrainingSamples(0);
             }
 
-            // Build signal bars from current readings + training averages overlay
+            // Build signal bars with stable keys — missing signals show as null (out of reach)
             const signals = signalResult?.signals || {};
             const averages = progressResult?.training_averages || {};
-            const bars = Object.keys(signals).map((key) => ({
+
+            // Add any new keys we haven't seen before
+            for (const key of Object.keys(signals)) {
+                knownKeysRef.current.add(key);
+            }
+            // Also add keys from training averages (may have been seen in earlier polls)
+            for (const key of Object.keys(averages)) {
+                knownKeysRef.current.add(key);
+            }
+
+            const bars = Array.from(knownKeysRef.current).sort().map((key) => ({
                 label: key,
-                value: signals[key],
+                value: key in signals ? signals[key] : null,
                 overlay: averages[key] != null ? averages[key] : undefined,
             }));
             setSignalBars(bars);

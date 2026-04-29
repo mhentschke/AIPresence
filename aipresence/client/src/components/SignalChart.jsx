@@ -1,27 +1,49 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import styles from './SignalChart.module.css';
 
 /**
- * Reusable horizontal bar chart for BLE signal strength visualization.
+ * Extract a short display label from a signal key.
+ *
+ * Signal keys look like "sensor.phone_monitor-beacon_uuid_major_minor".
+ * We strip the monitor entity prefix (before the first "-") and show only
+ * the beacon/attribute portion. The full key goes in the tooltip.
+ * For keys without a "-" (e.g. binary sensors), show the full label.
+ *
+ * Long results are truncated as start…end.
+ */
+function displayLabel(fullKey, maxLen = 30) {
+  const dashIdx = fullKey.indexOf('-');
+  const short = dashIdx >= 0 ? fullKey.slice(dashIdx + 1) : fullKey;
+  if (short.length <= maxLen) return short;
+  const keep = Math.floor((maxLen - 1) / 2);
+  return short.slice(0, keep) + '…' + short.slice(-keep);
+}
+
+/**
+ * Horizontal bar chart for BLE signal visualization during training.
  *
  * @param {Object} props
- * @param {{ label: string, value: number, overlay?: number }[]} props.bars
+ * @param {{ label: string, value: number | null, overlay?: number }[]} props.bars
+ *   value=null means the signal is out of reach (bar renders at 0 with ✕ marker)
  * @param {string} [props.title]
- * @param {string} [props.overlayLabel] - Legend label for the overlay markers
+ * @param {string} [props.overlayLabel] - Legend label for the overlay line
  */
 const SignalChart = ({ bars, title, overlayLabel }) => {
+  // Min-max normalize all values to 0–100%
   const { min, max } = useMemo(() => {
     if (!bars || bars.length === 0) return { min: 0, max: 1 };
 
     const allValues = bars.flatMap((b) => {
-      const vals = [b.value];
+      const vals = [];
+      if (b.value != null) vals.push(b.value);
       if (b.overlay != null) vals.push(b.overlay);
       return vals;
     });
 
+    if (allValues.length === 0) return { min: 0, max: 1 };
+
     let lo = Math.min(...allValues);
     let hi = Math.max(...allValues);
-    // Avoid zero-width range
     if (lo === hi) {
       lo -= 1;
       hi += 1;
@@ -30,6 +52,7 @@ const SignalChart = ({ bars, title, overlayLabel }) => {
   }, [bars]);
 
   const normalize = (v) => {
+    if (v == null) return 0;
     const pct = ((v - min) / (max - min)) * 100;
     return Math.max(0, Math.min(100, pct));
   };
@@ -50,24 +73,31 @@ const SignalChart = ({ bars, title, overlayLabel }) => {
         </div>
       )}
       <div className={styles.chart}>
-        {bars.map((bar) => (
-          <div key={bar.label} className={styles.row}>
-            <span className={styles.label} title={bar.label}>{bar.label}</span>
-            <div className={styles.track}>
-              <div
-                className={styles.bar}
-                style={{ width: `${normalize(bar.value)}%` }}
-              />
-              {bar.overlay != null && (
+        {bars.map((bar) => {
+          const outOfReach = bar.value == null;
+          return (
+            <div key={bar.label} className={`${styles.row} ${outOfReach ? styles.rowInactive : ''}`}>
+              <span className={styles.label} title={bar.label}>
+                {displayLabel(bar.label)}
+              </span>
+              <div className={styles.track}>
                 <div
-                  className={styles.overlay}
-                  style={{ left: `${normalize(bar.overlay)}%` }}
+                  className={styles.bar}
+                  style={{ width: `${normalize(bar.value)}%` }}
                 />
-              )}
+                {bar.overlay != null && (
+                  <div
+                    className={styles.overlayLine}
+                    style={{ left: `${normalize(bar.overlay)}%` }}
+                  />
+                )}
+              </div>
+              <span className={styles.value}>
+                {outOfReach ? '✕' : `${normalize(bar.value).toFixed(0)}%`}
+              </span>
             </div>
-            <span className={styles.value}>{typeof bar.value === 'number' ? bar.value.toFixed(1) : bar.value}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

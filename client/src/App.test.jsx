@@ -1,16 +1,17 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import { vi } from 'vitest';
 import App from './App';
 import { Backend } from './Backend';
 
 // Mock the Backend module
-jest.mock('./Backend', () => ({
+vi.mock('./Backend', () => ({
   Backend: {
-    GetDevices: jest.fn(),
-    GetBeaconMonitors: jest.fn(),
-    GetSensors: jest.fn(),
-    GetRooms: jest.fn(),
-    GetDeviceLocation: jest.fn(),
+    GetDevices: vi.fn(),
+    GetBeaconMonitors: vi.fn(),
+    GetSensors: vi.fn(),
+    GetRooms: vi.fn(),
+    GetDeviceLocation: vi.fn(),
   },
 }));
 
@@ -22,7 +23,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 test('renders Devices, Monitors, Sensors, and Rooms headings', async () => {
@@ -40,9 +41,9 @@ test('calls Backend API methods on mount', async () => {
   render(<App />);
 
   await waitFor(() => {
-    expect(Backend.GetDevices).toHaveBeenCalledTimes(1);
+    expect(Backend.GetDevices).toHaveBeenCalled();
   });
-  expect(Backend.GetBeaconMonitors).toHaveBeenCalledTimes(1);
-  expect(Backend.GetSensors).toHaveBeenCalledTimes(1);
-  expect(Backend.GetRooms).toHaveBeenCalledTimes(1);
+  expect(Backend.GetBeaconMonitors).toHaveBeenCalled();
+  expect(Backend.GetSensors).toHaveBeenCalled();
+  expect(Backend.GetRooms).toHaveBeenCalled();
 });

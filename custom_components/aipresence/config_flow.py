@@ -61,7 +61,10 @@ async def _async_discover_addon(hass) -> str | None:
         if addon_info is None:
             return None
 
-        if addon_info.get("state") != "started":
+        # addon_info may be a dict (in tests) or an AddonInfo object (real HA).
+        # Support both access patterns.
+        state = addon_info.get("state") if isinstance(addon_info, dict) else getattr(addon_info, "state", None)
+        if state != "started":
             return None
 
         # Build internal URL from the add-on slug

@@ -1,0 +1,5 @@
+# Home Assistant Add-on Repository
+# https://developers.home-assistant.io/docs/add-ons/repository
+name: AIPresence
+url: https://github.com/mhentschke/AIPresence
+maintainer: MHentschke

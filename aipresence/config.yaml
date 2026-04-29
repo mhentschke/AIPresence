@@ -4,7 +4,7 @@ name: AIPresence
 version: "0.1.0"
 slug: aipresence
 description: "Room-level presence detection using BLE signal ML classification"
-url: "https://github.com/MHentschke/aipresence"
+url: "https://github.com/mhentschke/AIPresence"
 arch:
   - amd64
   - aarch64

@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
-    model_config = {"env_file": "backend/.env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": "aipresence/backend/.env", "env_file_encoding": "utf-8"}
 
     @property
     def ha_configured(self) -> bool:

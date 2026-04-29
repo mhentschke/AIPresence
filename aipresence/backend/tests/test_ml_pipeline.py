@@ -10,6 +10,7 @@ from backend.classes import Model, Model_Stats, append_to_dataframe
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _synthetic_df(n_per_room=20):
     """Build a small synthetic DataFrame with 3 rooms and 4 sensor columns.
 
@@ -23,13 +24,15 @@ def _synthetic_df(n_per_room=20):
     for room in rooms:
         base = offsets[room]
         for _ in range(n_per_room):
-            rows.append({
-                "room": room,
-                "sensor_a": base + rng.rand() * 0.5,
-                "sensor_b": base + rng.rand() * 0.5,
-                "sensor_c": base + rng.rand() * 0.5,
-                "sensor_d": base + rng.rand() * 0.5,
-            })
+            rows.append(
+                {
+                    "room": room,
+                    "sensor_a": base + rng.rand() * 0.5,
+                    "sensor_b": base + rng.rand() * 0.5,
+                    "sensor_c": base + rng.rand() * 0.5,
+                    "sensor_d": base + rng.rand() * 0.5,
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -44,6 +47,7 @@ def model():
 # ---------------------------------------------------------------------------
 # data_prep
 # ---------------------------------------------------------------------------
+
 
 class TestDataPrep:
     def test_produces_correct_x_and_y_shapes(self, model):
@@ -70,15 +74,18 @@ class TestDataPrep:
 # data_prep_prediction
 # ---------------------------------------------------------------------------
 
+
 class TestDataPrepPrediction:
     def test_drops_extra_columns(self, model):
-        pred_df = pd.DataFrame({
-            "sensor_a": [0.5],
-            "sensor_b": [0.3],
-            "sensor_c": [0.2],
-            "sensor_d": [0.1],
-            "extra_col": [999],
-        })
+        pred_df = pd.DataFrame(
+            {
+                "sensor_a": [0.5],
+                "sensor_b": [0.3],
+                "sensor_c": [0.2],
+                "sensor_d": [0.1],
+                "extra_col": [999],
+            }
+        )
         result = model.data_prep_prediction(pred_df)
         assert "extra_col" not in result.columns
 
@@ -90,13 +97,15 @@ class TestDataPrepPrediction:
         assert result["sensor_b"].iloc[0] == 0
 
     def test_drops_room_column(self, model):
-        pred_df = pd.DataFrame({
-            "room": ["kitchen"],
-            "sensor_a": [0.5],
-            "sensor_b": [0.3],
-            "sensor_c": [0.2],
-            "sensor_d": [0.1],
-        })
+        pred_df = pd.DataFrame(
+            {
+                "room": ["kitchen"],
+                "sensor_a": [0.5],
+                "sensor_b": [0.3],
+                "sensor_c": [0.2],
+                "sensor_d": [0.1],
+            }
+        )
         result = model.data_prep_prediction(pred_df)
         assert "room" not in result.columns
 
@@ -104,6 +113,7 @@ class TestDataPrepPrediction:
 # ---------------------------------------------------------------------------
 # append_to_dataframe
 # ---------------------------------------------------------------------------
+
 
 class TestAppendToDataframe:
     def test_include_new_columns_true(self):
@@ -122,6 +132,7 @@ class TestAppendToDataframe:
 # ---------------------------------------------------------------------------
 # apply_scaler
 # ---------------------------------------------------------------------------
+
 
 class TestApplyScaler:
     def test_fit_true_creates_scaler(self, model):
@@ -147,6 +158,7 @@ class TestApplyScaler:
 # ---------------------------------------------------------------------------
 # train
 # ---------------------------------------------------------------------------
+
 
 class TestTrain:
     def test_returns_model_and_stats(self, model):

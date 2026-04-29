@@ -1,5 +1,7 @@
 """Root conftest — mock Home Assistant modules so tests run without homeassistant installed."""
 
+import datetime as _datetime
+import enum as _enum
 import sys
 from types import ModuleType
 from unittest.mock import MagicMock
@@ -99,6 +101,77 @@ hassio.async_get_addon_info = MagicMock()
 hassio.is_hassio = MagicMock()
 
 # ---------------------------------------------------------------------------
+# Bluetooth component stubs
+# ---------------------------------------------------------------------------
+
+bluetooth = sys.modules["homeassistant.components.bluetooth"]
+
+
+class _BluetoothCallbackMatcher:
+    """Minimal stub for BluetoothCallbackMatcher."""
+
+    def __init__(self, **kwargs):
+        pass
+
+
+class _BluetoothChange:
+    """Minimal stub for BluetoothChange."""
+
+    ADVERTISEMENT = "advertisement"
+
+
+class _BluetoothScanningMode:
+    """Minimal stub for BluetoothScanningMode."""
+
+    PASSIVE = "passive"
+    ACTIVE = "active"
+
+
+class _BluetoothServiceInfoBleak:
+    """Minimal stub for BluetoothServiceInfoBleak."""
+
+    def __init__(self, *, source="", address="", rssi=0, advertisement=None, **kwargs):
+        self.source = source
+        self.address = address
+        self.rssi = rssi
+        self.advertisement = advertisement
+
+
+bluetooth.BluetoothCallbackMatcher = _BluetoothCallbackMatcher
+bluetooth.BluetoothChange = _BluetoothChange
+bluetooth.BluetoothScanningMode = _BluetoothScanningMode
+bluetooth.BluetoothServiceInfoBleak = _BluetoothServiceInfoBleak
+bluetooth.async_register_callback = MagicMock(return_value=MagicMock())
+
+# ---------------------------------------------------------------------------
+# homeassistant.helpers.event stub
+# ---------------------------------------------------------------------------
+
+_helpers_event = ModuleType("homeassistant.helpers.event")
+_helpers_event.__path__ = []
+sys.modules["homeassistant.helpers.event"] = _helpers_event
+_helpers_event.async_track_time_interval = MagicMock(return_value=MagicMock())
+
+# ---------------------------------------------------------------------------
+# homeassistant.util.dt stub
+# ---------------------------------------------------------------------------
+
+_util = ModuleType("homeassistant.util")
+_util.__path__ = []
+sys.modules["homeassistant.util"] = _util
+
+_util_dt = ModuleType("homeassistant.util.dt")
+_util_dt.__path__ = []
+sys.modules["homeassistant.util.dt"] = _util_dt
+
+
+def _utcnow():
+    return _datetime.datetime.now(_datetime.timezone.utc)
+
+
+_util_dt.utcnow = _utcnow
+
+# ---------------------------------------------------------------------------
 # DataUpdateCoordinator stub
 # ---------------------------------------------------------------------------
 
@@ -158,8 +231,6 @@ entity_platform.AddEntitiesCallback = None  # type alias only
 # ---------------------------------------------------------------------------
 # Device tracker component stubs
 # ---------------------------------------------------------------------------
-
-import enum as _enum  # noqa: E402
 
 device_tracker = sys.modules["homeassistant.components.device_tracker"]
 

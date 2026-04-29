@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
@@ -64,6 +65,34 @@ async def async_setup_entry(
                 tracked_device_ids.discard(device_id)
 
     coordinator.async_add_listener(_async_handle_coordinator_update)
+
+    # Wire scanner entity creation — if scanner manager is already set up
+    scanner_key = entry.entry_id + "_scanner"
+    scanner_manager = hass.data.get(DOMAIN, {}).get(scanner_key)
+    if scanner_manager is not None:
+        _wire_scanner_entities(hass, entry, scanner_manager, async_add_entities)
+
+
+def _wire_scanner_entities(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    scanner_manager,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Register callback to create scanner sensor entities for new scanners."""
+
+    @callback
+    def _on_new_scanner(scanner_address: str) -> None:
+        entity = AIPresenceScannerSensor(entry, scanner_manager, scanner_address)
+        async_add_entities([entity])
+        _LOGGER.debug("Created scanner sensor entity for %s", scanner_address)
+
+    scanner_manager.register_scanner_entity_callback(_on_new_scanner)
+
+    # Create entities for scanners already discovered before sensor platform loaded
+    for scanner_address in list(scanner_manager.known_scanners):
+        entity = AIPresenceScannerSensor(entry, scanner_manager, scanner_address)
+        async_add_entities([entity])
 
 
 class AIPresenceConfidenceSensor(CoordinatorEntity, SensorEntity):
@@ -140,3 +169,50 @@ class AIPresenceRoomSensor(CoordinatorEntity, SensorEntity):
         if prediction and "room_name" in prediction:
             return prediction["room_name"]
         return None
+
+
+class AIPresenceScannerSensor(SensorEntity):
+    """Sensor entity for a BLE scanner source.
+
+    State is the count of currently visible beacons.
+    Attributes contain ``{beacon_id: rssi}`` matching the Android beacon
+    monitor format.
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        scanner_manager,
+        scanner_address: str,
+    ) -> None:
+        """Initialise the scanner sensor."""
+        self._entry = entry
+        self._scanner_manager = scanner_manager
+        self._scanner_address = scanner_address
+
+        # Derive a friendly name from the scanner address
+        safe_name = scanner_address.replace(":", "_").replace(".", "_").lower()
+        self._attr_unique_id = f"{DOMAIN}_proxy_{safe_name}"
+        self._attr_name = f"AIPresence Proxy {scanner_address}"
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        """Return device info — each scanner gets its own HA device entry."""
+        return {
+            "identifiers": {(DOMAIN, f"scanner_{self._scanner_address}")},
+            "name": f"AIPresence Proxy {self._scanner_address}",
+            "manufacturer": "AIPresence",
+            "model": "BLE Scanner",
+        }
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of currently visible beacons."""
+        return self._scanner_manager.get_scanner_beacon_count(self._scanner_address)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, int]:
+        """Return beacon RSSI values keyed by beacon identifier."""
+        return self._scanner_manager.get_scanner_beacons(self._scanner_address)

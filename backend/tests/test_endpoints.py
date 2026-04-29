@@ -268,9 +268,10 @@ class TestValidation:
         body = resp.json()
         assert "detail" in body
 
-    def test_device_both_ids_422(self, client):
-        resp = client.post("/devices", json={"name": "Bad", "entity_id": "a", "beacon_id": "b"})
-        assert resp.status_code == 422
+    def test_device_both_ids_accepted(self, client):
+        """A device can be both a monitor and a beacon (Phase 0.5)."""
+        resp = client.post("/devices", json={"name": "Both", "entity_id": "a", "beacon_id": "b"})
+        assert resp.status_code == 200
 
     def test_room_missing_name_422(self, client):
         resp = client.post("/rooms", json={"color": "#fff"})

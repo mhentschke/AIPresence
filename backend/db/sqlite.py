@@ -51,6 +51,11 @@ MIGRATIONS: dict[int, str] = {
 class SQLiteRepository:
     """SQLite-backed repository for all entity types."""
 
+    @staticmethod
+    def _migration_keys() -> list[int]:
+        """Return sorted migration version numbers."""
+        return sorted(MIGRATIONS.keys())
+
     def __init__(self, db_path: str) -> None:
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row

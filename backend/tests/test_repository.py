@@ -25,7 +25,7 @@ class TestSchemaMigration:
 
     def test_schema_version_is_set(self, repo):
         row = repo.conn.execute("SELECT version FROM schema_version").fetchone()
-        assert row["version"] == 1
+        assert row["version"] == max(SQLiteRepository._migration_keys())
 
     def test_reopening_does_not_rerun_migrations(self):
         """Opening a second repo on the same DB should not fail."""
@@ -41,7 +41,7 @@ class TestSchemaMigration:
         # Second open on same connection
         r1._apply_migrations()
         version = conn.execute("SELECT version FROM schema_version").fetchone()[0]
-        assert version == 1
+        assert version == max(SQLiteRepository._migration_keys())
         conn.close()
 
 

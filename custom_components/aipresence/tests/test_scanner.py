@@ -410,3 +410,63 @@ def test_scanner_sensor_unique_id_unchanged_with_friendly_name():
     sensor = AIPresenceScannerSensor(entry, manager, "AA:BB:CC:DD:EE:FF", friendly_name="Office Proxy")
 
     assert sensor._attr_unique_id == f"{DOMAIN}_proxy_aa_bb_cc_dd_ee_ff"
+
+
+# ---------------------------------------------------------------------------
+# Auto-registration with skip_validation tests
+# ---------------------------------------------------------------------------
+
+
+def test_register_scanner_uses_skip_validation():
+    """Registration POST URL includes skip_validation=true query parameter."""
+    import asyncio
+    from unittest.mock import AsyncMock
+
+    manager = _make_manager()
+    manager.backend_url = "http://localhost:5000"
+
+    # Build an async context manager mock for aiohttp response
+    mock_response = MagicMock()
+    mock_response.status = 200
+
+    async_cm = MagicMock()
+    async_cm.__aenter__ = AsyncMock(return_value=mock_response)
+    async_cm.__aexit__ = AsyncMock(return_value=None)
+
+    mock_session = MagicMock()
+    mock_session.post = MagicMock(return_value=async_cm)
+    manager.session = mock_session
+
+    asyncio.new_event_loop().run_until_complete(manager.async_register_scanner("AA:BB:CC:DD:EE:FF"))
+
+    mock_session.post.assert_called_once()
+    url = mock_session.post.call_args[0][0]
+    assert "skip_validation=true" in url
+    assert url.startswith("http://localhost:5000/beacon_monitors/sensor.aipresence_proxy_aa_bb_cc_dd_ee_ff")
+
+
+def test_retry_registrations_uses_skip_validation():
+    """Retry registration also uses skip_validation=true."""
+    import asyncio
+    from unittest.mock import AsyncMock
+
+    manager = _make_manager()
+    manager.backend_url = "http://localhost:5000"
+    manager.known_scanners.add("AA:BB:CC:DD:EE:FF")
+
+    mock_response = MagicMock()
+    mock_response.status = 200
+
+    async_cm = MagicMock()
+    async_cm.__aenter__ = AsyncMock(return_value=mock_response)
+    async_cm.__aexit__ = AsyncMock(return_value=None)
+
+    mock_session = MagicMock()
+    mock_session.post = MagicMock(return_value=async_cm)
+    manager.session = mock_session
+
+    asyncio.new_event_loop().run_until_complete(manager.async_retry_registrations())
+
+    mock_session.post.assert_called_once()
+    url = mock_session.post.call_args[0][0]
+    assert "skip_validation=true" in url

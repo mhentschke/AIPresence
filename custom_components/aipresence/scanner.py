@@ -264,7 +264,7 @@ class ScannerManager:
         try:
             timeout = aiohttp.ClientTimeout(total=5)
             async with self.session.post(
-                f"{self.backend_url}/beacon_monitors/{entity_id}",
+                f"{self.backend_url}/beacon_monitors/{entity_id}?skip_validation=true",
                 timeout=timeout,
             ) as resp:
                 if resp.status in (200, 201, 409):

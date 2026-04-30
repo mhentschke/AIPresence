@@ -15,13 +15,14 @@ def list_beacon_monitors(beacon_monitors: dict = Depends(get_beacon_monitors)):
 @router.post("/{entity_id}")
 def create_beacon_monitor(
     entity_id: str,
+    skip_validation: bool = False,
     beacon_monitors: dict = Depends(get_beacon_monitors),
     data_source=Depends(get_data_source),
     repo=Depends(get_repository),
 ):
     if entity_id in beacon_monitors:
         raise HTTPException(status_code=409, detail="Beacon monitor already exists")
-    if not data_source.check_entity_exists(entity_id):
+    if not skip_validation and not data_source.check_entity_exists(entity_id):
         raise HTTPException(status_code=404, detail="Entity not found in Home Assistant")
     beacon_monitors[entity_id] = BeaconMonitor(entity_id=entity_id, data_source=data_source)
     repo.save_beacon_monitor(entity_id)

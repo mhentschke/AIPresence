@@ -21,6 +21,7 @@ from backend.datasource import DataSourceUnavailableError, StandaloneDataSource
 from backend.db.sqlite import SQLiteRepository
 from backend.dependencies import get_data_source
 from backend.errors import generic_exception_handler, value_error_handler
+from backend.routes.beacon_monitors import router as beacon_monitors_router
 from backend.routes.devices import router as devices_router
 from backend.routes.rooms import router as rooms_router
 from backend.routes.sensors import router as sensors_router
@@ -42,6 +43,7 @@ def _create_test_app() -> FastAPI:
         app.state.sensors = {}
         app.state.devices = {}
         app.state.rooms = {}
+        app.state.beacon_monitors = {}
         app.state.repository = SQLiteRepository(":memory:")
         yield
 
@@ -58,6 +60,7 @@ def _create_test_app() -> FastAPI:
     app.include_router(trackers_router, prefix="/trackers")
     app.include_router(sensors_router, prefix="/sensors")
     app.include_router(devices_router, prefix="/devices")
+    app.include_router(beacon_monitors_router, prefix="/beacon_monitors")
 
     @app.get("/device/check_entity_id/{entity_id}")
     def check_entity_id(entity_id: str, data_source=Depends(get_data_source)):
@@ -387,3 +390,44 @@ class TestHAEntities:
         resp = client.get("/ha/entities?domain=device_tracker")
         assert resp.status_code == 503
         assert "detail" in resp.json()
+
+
+# ---------------------------------------------------------------------------
+# Beacon Monitors CRUD + skip_validation
+# ---------------------------------------------------------------------------
+
+
+class TestBeaconMonitors:
+    def test_list_beacon_monitors_empty(self, client):
+        resp = client.get("/beacon_monitors")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_create_beacon_monitor_without_skip_validation_returns_503(self, client):
+        """Without skip_validation, StandaloneDataSource raises DataSourceUnavailableError."""
+        resp = client.post("/beacon_monitors/sensor.proxy_office")
+        assert resp.status_code == 503
+
+    def test_create_beacon_monitor_with_skip_validation(self, client):
+        """With skip_validation=true, entity existence check is skipped."""
+        resp = client.post("/beacon_monitors/sensor.proxy_office?skip_validation=true")
+        assert resp.status_code == 200
+
+        monitors = client.get("/beacon_monitors").json()
+        assert len(monitors) == 1
+        assert monitors[0]["entity_id"] == "sensor.proxy_office"
+
+    def test_create_duplicate_beacon_monitor_409(self, client):
+        client.post("/beacon_monitors/sensor.proxy_office?skip_validation=true")
+        resp = client.post("/beacon_monitors/sensor.proxy_office?skip_validation=true")
+        assert resp.status_code == 409
+
+    def test_delete_beacon_monitor(self, client):
+        client.post("/beacon_monitors/sensor.proxy_office?skip_validation=true")
+        resp = client.delete("/beacon_monitors/sensor.proxy_office")
+        assert resp.status_code == 200
+        assert client.get("/beacon_monitors").json() == []
+
+    def test_delete_beacon_monitor_not_found(self, client):
+        resp = client.delete("/beacon_monitors/nonexistent")
+        assert resp.status_code == 404

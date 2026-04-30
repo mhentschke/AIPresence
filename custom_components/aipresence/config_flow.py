@@ -24,7 +24,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-ADDON_SLUG = "local_aipresence"
+ADDON_SLUG_SUFFIX = "aipresence"
 ADDON_PORT = 8099
 VALIDATE_TIMEOUT = 5  # seconds
 MIN_BEACON_TIMEOUT = 5
@@ -43,42 +43,50 @@ async def _async_validate_backend(url: str) -> bool:
 
 
 async def _async_discover_addon(hass) -> str | None:
-    """Try to discover the AIPresence add-on via the Supervisor API."""
+    """Try to discover the AIPresence add-on via the Supervisor API.
+
+    The add-on slug varies depending on install source (local vs GitHub
+    repository), so we search for any installed add-on whose slug ends
+    with ``aipresence``.
+    """
     try:
-        # Check if hassio is loaded
         if "hassio" not in hass.config.components:
             _LOGGER.warning("Add-on discovery: hassio not in components")
             return None
 
-        from homeassistant.components.hassio import is_hassio
-
-        if not is_hassio(hass):
-            _LOGGER.warning("Add-on discovery: is_hassio returned False")
-            return None
-
-        # Use the Supervisor REST API directly via the hassio websession.
-        # The helper function signatures vary across HA versions, so hitting
-        # the Supervisor HTTP API is the most reliable approach.
         from homeassistant.components.hassio import get_supervisor_client
 
         client = get_supervisor_client(hass)
-        addon_info = await client.addons.addon_info(ADDON_SLUG)
+
+        # List all installed add-ons and find ours by slug suffix
+        store_info = await client.store.info()
+        addon_slug: str | None = None
+        for addon in getattr(store_info, "addons", []):
+            slug = getattr(addon, "slug", "")
+            if slug.endswith(ADDON_SLUG_SUFFIX) and getattr(addon, "installed", False):
+                addon_slug = slug
+                break
+
+        if addon_slug is None:
+            # Fallback: try the local slug directly
+            addon_slug = f"local_{ADDON_SLUG_SUFFIX}"
+            _LOGGER.debug("Add-on discovery: no installed add-on found by suffix, trying %s", addon_slug)
+
+        addon_info = await client.addons.addon_info(addon_slug)
 
         state = getattr(addon_info, "state", None)
-        _LOGGER.debug("Add-on discovery: addon state = %s", state)
+        _LOGGER.debug("Add-on discovery: addon %s state = %s", addon_slug, state)
 
         if state is None:
             _LOGGER.warning("Add-on discovery: could not read addon state")
             return None
 
-        # The state may be a string or an enum — compare by value
         state_str = state.value if hasattr(state, "value") else str(state)
         if state_str != "started":
             _LOGGER.warning("Add-on discovery: addon state is %s, not started", state_str)
             return None
 
-        # Build internal URL from the add-on hostname
-        hostname = getattr(addon_info, "hostname", None) or ADDON_SLUG.replace("_", "-")
+        hostname = getattr(addon_info, "hostname", None) or addon_slug.replace("_", "-")
         url = f"http://{hostname}:{ADDON_PORT}"
         _LOGGER.info("Add-on discovery: found AIPresence at %s", url)
         return url

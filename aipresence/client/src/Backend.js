@@ -248,6 +248,14 @@ export class Backend {
     return null;
   }
 
+  static async GetTrainingAverages(device_id) {
+    const response = await fetch(rel('/devices/' + device_id + '/training_averages'));
+    if (response.ok) {
+      return response.json();
+    }
+    return null;
+  }
+
   static async StartTraining(device_id, room_id, overwrite) {
     const resp = await apiCall('/devices/' + device_id + '/model/start_training', {
       method: 'POST',

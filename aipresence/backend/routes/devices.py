@@ -12,6 +12,8 @@ from ..schemas import (
     DeviceResponse,
     ModelResponse,
     ModelStatsResponse,
+    RoomAverages,
+    TrainingAveragesResponse,
     TrainingStart,
 )
 
@@ -268,6 +270,37 @@ def get_signal_data(device_id: str, devices: dict = Depends(get_devices)):
     except Exception:
         signals = {}
     return {"signals": signals}
+
+
+@router.get("/{device_id}/training_averages", response_model=TrainingAveragesResponse)
+def get_training_averages(
+    device_id: str,
+    devices: dict = Depends(get_devices),
+    rooms: dict = Depends(get_rooms),
+):
+    if device_id not in devices:
+        raise HTTPException(status_code=404, detail="Device not found")
+    device = devices[device_id]
+    if device.model is None or device.model.data.empty:
+        raise HTTPException(status_code=400, detail="Device has no model")
+
+    df = device.model.data
+    if "room" not in df.columns:
+        raise HTTPException(status_code=400, detail="Device has no model")
+
+    feature_cols = [c for c in df.columns if c != "room"]
+    if not feature_cols:
+        return TrainingAveragesResponse(rooms={}, feature_columns=[])
+
+    result_rooms: dict[str, RoomAverages] = {}
+    for room_id, group in df.groupby("room"):
+        numeric = group[feature_cols].apply(pd.to_numeric, errors="coerce")
+        means = numeric.mean(skipna=True)
+        averages = {k: v for k, v in means.items() if pd.notna(v)}
+        room_name = rooms[room_id].name if room_id in rooms else str(room_id)
+        result_rooms[str(room_id)] = RoomAverages(name=room_name, averages=averages)
+
+    return TrainingAveragesResponse(rooms=result_rooms, feature_columns=feature_cols)
 
 
 def _compute_training_averages(model) -> dict:

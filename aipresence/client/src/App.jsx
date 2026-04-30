@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import DeviceTable from './components/DeviceTable'
 import DeviceEditModal from './components/DeviceEditModal'
 import DeviceTrainingModal from './components/DeviceTrainingModal'
+import PredictionDetailsModal from './components/PredictionDetailsModal'
 import MonitorTable from './components/MonitorTable'
 import MonitorEditModal from './components/MonitorEditModal'
 import SensorTable from './components/SensorTable'
@@ -31,6 +32,7 @@ function App() {
     const [data, setData] = useState([])
     const [deviceEditModal, setDeviceEditModal] = useState(false)
     const [deviceTrainModal, setDeviceTrainModal] = useState(false)
+    const [predictionDetailsModal, setPredictionDetailsModal] = useState(false)
     const [deviceCursor, setDeviceCursor] = useState({})
     const [monitorData, setMonitorData] = useState([])
     const [monitorEditModal, setMonitorEditModal] = useState(false)
@@ -112,7 +114,7 @@ function App() {
     }, [])
 
     useEffect(() => {
-        const anyModalOpen = deviceEditModal || deviceTrainModal || monitorEditModal || sensorEditModal || roomEditModal;
+        const anyModalOpen = deviceEditModal || deviceTrainModal || predictionDetailsModal || monitorEditModal || sensorEditModal || roomEditModal;
 
         if (!anyModalOpen) {
             intervalRef.current = setInterval(() => {
@@ -147,7 +149,7 @@ function App() {
             clearInterval(intervalRef.current);
             intervalRef.current = undefined;
         };
-    }, [deviceEditModal, deviceTrainModal, monitorEditModal, sensorEditModal, roomEditModal]);
+    }, [deviceEditModal, deviceTrainModal, predictionDetailsModal, monitorEditModal, sensorEditModal, roomEditModal]);
 
     const renderLoading = () => (
         <div className={spinnerStyles.container}>
@@ -163,7 +165,7 @@ function App() {
                         {devicesLoading ? renderLoading() : data.length === 0 ? (
                             <p className={spinnerStyles.emptyState}>No devices yet. Click Add Device to get started.</p>
                         ) : (
-                            <DeviceTable data={data} setData={setData} deviceEditModal={setDeviceEditModal} deviceTrainModal={setDeviceTrainModal} deviceSelector={setDeviceCursor} backend={Backend}/>
+                            <DeviceTable data={data} setData={setData} deviceEditModal={setDeviceEditModal} deviceTrainModal={setDeviceTrainModal} predictionDetailsModal={setPredictionDetailsModal} deviceSelector={setDeviceCursor} backend={Backend}/>
                         )}
                         <button className={styles.addButton} onClick={() => {
                             setDeviceCursor(-1)
@@ -253,6 +255,7 @@ function App() {
             {/* Modals render regardless of active tab so they can open/close freely */}
             <DeviceEditModal data={data} setData={setData} modal={deviceEditModal} setModal={setDeviceEditModal} deviceCursor={deviceCursor} backend={Backend}/>
             <DeviceTrainingModal devices={data} setDevices={setData} rooms={roomData} setRooms={setRoomData} modal={deviceTrainModal} setModal={setDeviceTrainModal} deviceCursor={deviceCursor} backend={Backend} getElementFromId={getElementFromId}/>
+            <PredictionDetailsModal device={typeof deviceCursor === 'number' && deviceCursor >= 0 ? data[deviceCursor] : null} rooms={roomData} modal={predictionDetailsModal} setModal={setPredictionDetailsModal} backend={Backend}/>
             <MonitorEditModal data={monitorData} setData={setMonitorData} modal={monitorEditModal} setModal={setMonitorEditModal} backend={Backend}/>
             <SensorEditModal data={sensorData} setData={setSensorData} modal={sensorEditModal} setModal={setSensorEditModal} sensorCursor={sensorCursor} backend={Backend}/>
             <RoomEditModal data={roomData} setData={setRoomData} modal={roomEditModal} setModal={setRoomEditModal} roomCursor={roomCursor} backend={Backend}/>

@@ -393,6 +393,69 @@ class TestHAEntities:
 
 
 # ---------------------------------------------------------------------------
+# Training Averages endpoint
+# ---------------------------------------------------------------------------
+
+
+class TestTrainingAverages:
+    def test_training_averages_device_not_found(self, client):
+        resp = client.get("/devices/nonexistent/training_averages")
+        assert resp.status_code == 404
+
+    def test_training_averages_no_model(self, client):
+        device_id = client.post("/devices", json={"name": "Phone", "entity_id": "sensor.phone"}).json()["id"]
+        resp = client.get(f"/devices/{device_id}/training_averages")
+        assert resp.status_code == 400
+        assert "no model" in resp.json()["detail"].lower()
+
+    def test_training_averages_with_model_data(self, client):
+        import pandas as pd
+
+        from backend.classes import Model, Model_Stats
+
+        # Create device
+        device_id = client.post("/devices", json={"name": "Phone", "entity_id": "sensor.phone"}).json()["id"]
+
+        # Create rooms
+        room1_id = client.post("/rooms", json={"name": "Office"}).json()["id"]
+        room2_id = client.post("/rooms", json={"name": "Kitchen"}).json()["id"]
+
+        # Build mock model with training data
+        data = pd.DataFrame(
+            {
+                "room": [room1_id, room1_id, room2_id, room2_id],
+                "sensor.proxy_a": [-60.0, -70.0, -80.0, -90.0],
+                "sensor.proxy_b": [-50.0, -55.0, -75.0, -85.0],
+            }
+        )
+        model = Model(
+            data_path="test_device",
+            data=data,
+            trained_model_stats=Model_Stats("RandomForestClassifier", {}, 0.9),
+        )
+        client.app.state.devices[device_id].model = model
+
+        resp = client.get(f"/devices/{device_id}/training_averages")
+        assert resp.status_code == 200
+        body = resp.json()
+
+        assert "rooms" in body
+        assert "feature_columns" in body
+        assert set(body["feature_columns"]) == {"sensor.proxy_a", "sensor.proxy_b"}
+
+        # Check room averages
+        assert room1_id in body["rooms"]
+        assert body["rooms"][room1_id]["name"] == "Office"
+        assert body["rooms"][room1_id]["averages"]["sensor.proxy_a"] == pytest.approx(-65.0)
+        assert body["rooms"][room1_id]["averages"]["sensor.proxy_b"] == pytest.approx(-52.5)
+
+        assert room2_id in body["rooms"]
+        assert body["rooms"][room2_id]["name"] == "Kitchen"
+        assert body["rooms"][room2_id]["averages"]["sensor.proxy_a"] == pytest.approx(-85.0)
+        assert body["rooms"][room2_id]["averages"]["sensor.proxy_b"] == pytest.approx(-80.0)
+
+
+# ---------------------------------------------------------------------------
 # Beacon Monitors CRUD + skip_validation
 # ---------------------------------------------------------------------------
 

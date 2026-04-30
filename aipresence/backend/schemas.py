@@ -87,3 +87,13 @@ class RoomResponse(BaseModel):
     id: str
     name: str
     color: str
+
+
+class RoomAverages(BaseModel):
+    name: str
+    averages: dict[str, float]
+
+
+class TrainingAveragesResponse(BaseModel):
+    rooms: dict[str, RoomAverages]
+    feature_columns: list[str]

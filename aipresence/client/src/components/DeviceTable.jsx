@@ -4,7 +4,7 @@ import styles from './DeviceTable.module.css';
 import btnStyles from './Button.module.css';
 
 
-const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, deviceTrainModal, backend}) => {
+const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, deviceTrainModal, predictionDetailsModal, backend}) => {
   const { addToast } = useToast();
   const [expandedRow, setExpandedRow] = useState(null);
 
@@ -63,6 +63,13 @@ const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, deviceTra
                         console.log(data[index]);
                       }
                     }>Start Training</button>
+                    {device.trained && (
+                      <button className={`${btnStyles.secondary} ${btnStyles.small}`} onClick={() => {
+                          predictionDetailsModal(true);
+                          deviceSelector(index);
+                        }
+                      }>Details</button>
+                    )}
                     <button className={`${btnStyles.secondary} ${btnStyles.small}`} onClick={() => console.log(index)}>Download Model</button>
                   </div>
                 </td>

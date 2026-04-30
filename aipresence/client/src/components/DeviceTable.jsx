@@ -32,9 +32,9 @@ const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, deviceTra
         </thead>
         <tbody>
           {data.map((device, index) => (
-            <React.Fragment key={device.entity_id}>
+            <React.Fragment key={device.id}>
               <tr>
-                <td>{device.type + ": " + device.identifier}</td>
+                <td>{device.type === "Both" ? `Both: ${device.entity_id} / ${device.beacon_id}` : device.type + ": " + device.identifier}</td>
                 <td>{device.name}</td>
                 <td>{device.trained}</td>
                 <td>{device.accuracy}</td>

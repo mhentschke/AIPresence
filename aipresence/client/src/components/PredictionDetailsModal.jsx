@@ -35,15 +35,26 @@ const PredictionDetailsModal = ({ device, rooms, modal, setModal, backend }) => 
         const predictedRoomId = locationResult?.room || null;
         setSelectedRoom(predictedRoomId);
 
-        // Build signal bars from current readings with overlay from predicted room
+        // Build signal bars from the union of current signals + all training average keys
         const signals = signalResult?.signals || {};
-        const roomAvgs = predictedRoomId && avgResult?.rooms?.[predictedRoomId]?.averages || {};
+        const roomAvgs =
+          (predictedRoomId && avgResult?.rooms?.[predictedRoomId]?.averages) || {};
 
-        const bars = Object.keys(signals).sort().map((key) => ({
-          label: key,
-          value: signals[key],
-          overlay: roomAvgs[key] != null ? roomAvgs[key] : undefined,
-        }));
+        // Collect all known keys across current signals and every room's averages
+        const allKeys = new Set(Object.keys(signals));
+        if (avgResult?.feature_columns) {
+          for (const col of avgResult.feature_columns) {
+            allKeys.add(col);
+          }
+        }
+
+        const bars = Array.from(allKeys)
+          .sort()
+          .map((key) => ({
+            label: key,
+            value: key in signals ? signals[key] : null,
+            overlay: roomAvgs[key] != null ? roomAvgs[key] : undefined,
+          }));
         setSignalBars(bars);
       } catch {
         // Errors handled gracefully — empty state shown

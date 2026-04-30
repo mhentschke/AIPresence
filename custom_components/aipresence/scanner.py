@@ -20,6 +20,7 @@ from homeassistant.components.bluetooth import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util.dt import utcnow
@@ -100,6 +101,9 @@ class ScannerManager:
         # Mapping from scanner_address to the entity_id used for backend registration
         self._scanner_entity_ids: dict[str, str] = {}
 
+        # Mapping from scanner_address to resolved friendly name (or None)
+        self._scanner_names: dict[str, str | None] = {}
+
         # Callbacks for scanner entity management
         self._scanner_entity_callbacks: list = []
 
@@ -138,6 +142,37 @@ class ScannerManager:
     # BLE advertisement handling
     # ------------------------------------------------------------------
 
+    def _resolve_scanner_friendly_name(self, scanner_address: str) -> str | None:
+        """Look up a friendly device name for a scanner address.
+
+        Checks the HA device registry for a device matching the scanner's
+        source address (via network MAC connection or ESPHome identifier).
+        Returns the device name if found, otherwise ``None``.
+        """
+        try:
+            dev_reg = dr.async_get(self.hass)
+        except Exception:  # noqa: BLE001
+            _LOGGER.debug("Device registry not available for scanner name lookup")
+            return None
+
+        # Try matching by network MAC connection
+        device = dev_reg.async_get_device(
+            connections={(dr.CONNECTION_NETWORK_MAC, scanner_address)},
+        )
+        if device is None:
+            # Try matching by ESPHome identifier
+            device = dev_reg.async_get_device(
+                identifiers={("esphome", scanner_address)},
+            )
+        if device is not None and device.name:
+            _LOGGER.debug(
+                "Resolved scanner %s to friendly name '%s'",
+                scanner_address,
+                device.name,
+            )
+            return device.name
+        return None
+
     @callback
     def _async_handle_advertisement(
         self,
@@ -156,7 +191,14 @@ class ScannerManager:
         is_new = scanner_address not in self.known_scanners
         if is_new:
             self.known_scanners.add(scanner_address)
-            _LOGGER.debug("New BLE scanner detected: %s", scanner_address)
+            # Resolve friendly name from HA device registry
+            friendly_name = self._resolve_scanner_friendly_name(scanner_address)
+            self._scanner_names[scanner_address] = friendly_name
+            _LOGGER.debug(
+                "New BLE scanner detected: %s (friendly_name=%s)",
+                scanner_address,
+                friendly_name,
+            )
             for cb in self._scanner_entity_callbacks:
                 cb(scanner_address)
 
@@ -189,6 +231,10 @@ class ScannerManager:
     def register_scanner_entity_callback(self, cb) -> None:
         """Register a callback invoked when a new scanner is detected."""
         self._scanner_entity_callbacks.append(cb)
+
+    def get_scanner_friendly_name(self, scanner_address: str) -> str | None:
+        """Return the resolved friendly name for a scanner, or None."""
+        return self._scanner_names.get(scanner_address)
 
     # ------------------------------------------------------------------
     # Backend auto-registration

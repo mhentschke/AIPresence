@@ -366,3 +366,26 @@ class _EntityRegistry:
 
 _helpers_entity_registry.async_get = MagicMock(return_value=_EntityRegistry())
 _helpers_entity_registry.EntityRegistry = _EntityRegistry
+
+# ---------------------------------------------------------------------------
+# Device registry stub
+# ---------------------------------------------------------------------------
+
+_helpers_device_registry = ModuleType("homeassistant.helpers.device_registry")
+_helpers_device_registry.__path__ = []
+sys.modules["homeassistant.helpers.device_registry"] = _helpers_device_registry
+
+CONNECTION_NETWORK_MAC = "mac"
+
+_helpers_device_registry.CONNECTION_NETWORK_MAC = CONNECTION_NETWORK_MAC
+
+
+class _DeviceRegistry:
+    """Minimal stub for DeviceRegistry."""
+
+    def async_get_device(self, *, connections=None, identifiers=None):
+        return None
+
+
+_helpers_device_registry.async_get = MagicMock(return_value=_DeviceRegistry())
+_helpers_device_registry.DeviceRegistry = _DeviceRegistry

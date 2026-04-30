@@ -83,9 +83,10 @@ def _wire_scanner_entities(
 
     @callback
     def _on_new_scanner(scanner_address: str) -> None:
-        entity = AIPresenceScannerSensor(entry, scanner_manager, scanner_address)
+        friendly_name = scanner_manager.get_scanner_friendly_name(scanner_address)
+        entity = AIPresenceScannerSensor(entry, scanner_manager, scanner_address, friendly_name)
         async_add_entities([entity])
-        _LOGGER.debug("Created scanner sensor entity for %s", scanner_address)
+        _LOGGER.debug("Created scanner sensor entity for %s (friendly_name=%s)", scanner_address, friendly_name)
         # Trigger auto-registration with the backend
         hass.async_create_task(scanner_manager.async_register_scanner(scanner_address))
 
@@ -93,7 +94,8 @@ def _wire_scanner_entities(
 
     # Create entities for scanners already discovered before sensor platform loaded
     for scanner_address in list(scanner_manager.known_scanners):
-        entity = AIPresenceScannerSensor(entry, scanner_manager, scanner_address)
+        friendly_name = scanner_manager.get_scanner_friendly_name(scanner_address)
+        entity = AIPresenceScannerSensor(entry, scanner_manager, scanner_address, friendly_name)
         async_add_entities([entity])
         # Register already-discovered scanners with the backend
         hass.async_create_task(scanner_manager.async_register_scanner(scanner_address))
@@ -190,23 +192,28 @@ class AIPresenceScannerSensor(SensorEntity):
         entry: ConfigEntry,
         scanner_manager,
         scanner_address: str,
+        friendly_name: str | None = None,
     ) -> None:
         """Initialise the scanner sensor."""
         self._entry = entry
         self._scanner_manager = scanner_manager
         self._scanner_address = scanner_address
+        self._friendly_name = friendly_name
 
-        # Derive a friendly name from the scanner address
+        # entity_id format stays MAC-based for backend registration consistency
         safe_name = scanner_address.replace(":", "_").replace(".", "_").lower()
         self._attr_unique_id = f"{DOMAIN}_proxy_{safe_name}"
-        self._attr_name = f"AIPresence Proxy {scanner_address}"
+
+        display_name = friendly_name or scanner_address
+        self._attr_name = f"AIPresence Proxy {display_name}"
 
     @property
     def device_info(self) -> dict[str, Any]:
         """Return device info — each scanner gets its own HA device entry."""
+        display_name = self._friendly_name or self._scanner_address
         return {
             "identifiers": {(DOMAIN, f"scanner_{self._scanner_address}")},
-            "name": f"AIPresence Proxy {self._scanner_address}",
+            "name": f"AIPresence Proxy {display_name}",
             "manufacturer": "AIPresence",
             "model": "BLE Scanner",
         }

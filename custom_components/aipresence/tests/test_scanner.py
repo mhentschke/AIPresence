@@ -255,3 +255,158 @@ def test_scanner_sensor_unique_id():
     sensor = AIPresenceScannerSensor(entry, manager, "AA:BB:CC:DD:EE:FF")
 
     assert sensor._attr_unique_id == f"{DOMAIN}_proxy_aa_bb_cc_dd_ee_ff"
+
+
+# ---------------------------------------------------------------------------
+# Friendly name resolution tests
+# ---------------------------------------------------------------------------
+
+
+def _make_device_registry_mock(devices: dict[str, str] | None = None):
+    """Create a mock device registry.
+
+    ``devices`` maps scanner addresses to friendly names.
+    """
+    devices = devices or {}
+
+    def _async_get_device(*, connections=None, identifiers=None):
+        # Check connections (network MAC)
+        if connections:
+            for _type, addr in connections:
+                if addr in devices:
+                    dev = MagicMock()
+                    dev.name = devices[addr]
+                    return dev
+        # Check identifiers (esphome)
+        if identifiers:
+            for _domain, addr in identifiers:
+                if addr in devices:
+                    dev = MagicMock()
+                    dev.name = devices[addr]
+                    return dev
+        return None
+
+    reg = MagicMock()
+    reg.async_get_device = _async_get_device
+    return reg
+
+
+def test_resolve_friendly_name_via_mac(monkeypatch):
+    """Friendly name is resolved when device registry has a MAC match."""
+    manager = _make_manager()
+    mock_reg = _make_device_registry_mock({"AA:BB:CC:DD:EE:FF": "Office Proxy"})
+    monkeypatch.setattr(
+        "custom_components.aipresence.scanner.dr.async_get",
+        lambda _hass: mock_reg,
+    )
+
+    name = manager._resolve_scanner_friendly_name("AA:BB:CC:DD:EE:FF")
+    assert name == "Office Proxy"
+
+
+def test_resolve_friendly_name_via_esphome_identifier(monkeypatch):
+    """Friendly name is resolved via ESPHome identifier fallback."""
+
+    # Registry that only matches on identifiers, not connections
+    def _async_get_device(*, connections=None, identifiers=None):
+        if identifiers:
+            for _domain, addr in identifiers:
+                if addr == "esp32_kitchen":
+                    dev = MagicMock()
+                    dev.name = "Kitchen Proxy"
+                    return dev
+        return None
+
+    reg = MagicMock()
+    reg.async_get_device = _async_get_device
+
+    manager = _make_manager()
+    monkeypatch.setattr(
+        "custom_components.aipresence.scanner.dr.async_get",
+        lambda _hass: reg,
+    )
+
+    name = manager._resolve_scanner_friendly_name("esp32_kitchen")
+    assert name == "Kitchen Proxy"
+
+
+def test_resolve_friendly_name_returns_none_when_not_found(monkeypatch):
+    """Returns None when no device registry match exists."""
+    manager = _make_manager()
+    mock_reg = _make_device_registry_mock({})
+    monkeypatch.setattr(
+        "custom_components.aipresence.scanner.dr.async_get",
+        lambda _hass: mock_reg,
+    )
+
+    name = manager._resolve_scanner_friendly_name("XX:XX:XX:XX:XX:XX")
+    assert name is None
+
+
+def test_handle_advertisement_stores_friendly_name(monkeypatch):
+    """New scanner advertisement triggers friendly name resolution and storage."""
+    manager = _make_manager()
+    mock_reg = _make_device_registry_mock({"scanner_abc": "Living Room Proxy"})
+    monkeypatch.setattr(
+        "custom_components.aipresence.scanner.dr.async_get",
+        lambda _hass: mock_reg,
+    )
+
+    info = _make_service_info(source="scanner_abc", address="11:22:33:44:55:66", rssi=-60)
+    manager._async_handle_advertisement(info, None)
+
+    assert manager.get_scanner_friendly_name("scanner_abc") == "Living Room Proxy"
+
+
+def test_handle_advertisement_stores_none_when_no_name(monkeypatch):
+    """Friendly name is None when device registry has no match."""
+    manager = _make_manager()
+    mock_reg = _make_device_registry_mock({})
+    monkeypatch.setattr(
+        "custom_components.aipresence.scanner.dr.async_get",
+        lambda _hass: mock_reg,
+    )
+
+    info = _make_service_info(source="unknown_scanner", address="11:22:33:44:55:66", rssi=-60)
+    manager._async_handle_advertisement(info, None)
+
+    assert manager.get_scanner_friendly_name("unknown_scanner") is None
+
+
+# ---------------------------------------------------------------------------
+# Scanner sensor friendly name display tests
+# ---------------------------------------------------------------------------
+
+
+def test_scanner_sensor_uses_friendly_name():
+    """Scanner sensor uses friendly name in display name and device info."""
+    manager = _make_manager()
+    entry = MagicMock()
+    entry.entry_id = "test_entry"
+    sensor = AIPresenceScannerSensor(entry, manager, "AA:BB:CC:DD:EE:FF", friendly_name="Office Proxy")
+
+    assert sensor._attr_name == "AIPresence Proxy Office Proxy"
+    info = sensor.device_info
+    assert info["name"] == "AIPresence Proxy Office Proxy"
+
+
+def test_scanner_sensor_falls_back_to_address():
+    """Scanner sensor falls back to address when no friendly name."""
+    manager = _make_manager()
+    entry = MagicMock()
+    entry.entry_id = "test_entry"
+    sensor = AIPresenceScannerSensor(entry, manager, "AA:BB:CC:DD:EE:FF", friendly_name=None)
+
+    assert sensor._attr_name == "AIPresence Proxy AA:BB:CC:DD:EE:FF"
+    info = sensor.device_info
+    assert info["name"] == "AIPresence Proxy AA:BB:CC:DD:EE:FF"
+
+
+def test_scanner_sensor_unique_id_unchanged_with_friendly_name():
+    """unique_id stays MAC-based regardless of friendly name."""
+    manager = _make_manager()
+    entry = MagicMock()
+    entry.entry_id = "test_entry"
+    sensor = AIPresenceScannerSensor(entry, manager, "AA:BB:CC:DD:EE:FF", friendly_name="Office Proxy")
+
+    assert sensor._attr_unique_id == f"{DOMAIN}_proxy_aa_bb_cc_dd_ee_ff"

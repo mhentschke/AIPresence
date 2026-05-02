@@ -46,31 +46,31 @@ async def _async_discover_addon(hass) -> str | None:
     """Try to discover the AIPresence add-on via the Supervisor API.
 
     The add-on slug varies depending on install source (local vs GitHub
-    repository), so we search for any installed add-on whose slug ends
-    with ``aipresence``.
+    repository), so we query the Supervisor's installed add-ons list and
+    search for any add-on whose slug ends with ``aipresence``.
     """
     try:
         if "hassio" not in hass.config.components:
-            _LOGGER.warning("Add-on discovery: hassio not in components")
+            _LOGGER.debug("Add-on discovery: hassio not in components")
             return None
 
         from homeassistant.components.hassio import get_supervisor_client
 
         client = get_supervisor_client(hass)
 
-        # List all installed add-ons and find ours by slug suffix
-        store_info = await client.store.info()
+        # Find our add-on by slug suffix among installed add-ons.
+        # Use the supervisor info endpoint which lists all add-ons.
+        supervisor_info = await client.supervisor.info()
         addon_slug: str | None = None
-        for addon in getattr(store_info, "addons", []):
+        for addon in getattr(supervisor_info, "addons", []):
             slug = getattr(addon, "slug", "")
-            if slug.endswith(ADDON_SLUG_SUFFIX) and getattr(addon, "installed", False):
+            if slug.endswith(ADDON_SLUG_SUFFIX):
                 addon_slug = slug
                 break
 
         if addon_slug is None:
-            # Fallback: try the local slug directly
-            addon_slug = f"local_{ADDON_SLUG_SUFFIX}"
-            _LOGGER.debug("Add-on discovery: no installed add-on found by suffix, trying %s", addon_slug)
+            _LOGGER.debug("Add-on discovery: no installed add-on ending with '%s'", ADDON_SLUG_SUFFIX)
+            return None
 
         addon_info = await client.addons.addon_info(addon_slug)
 

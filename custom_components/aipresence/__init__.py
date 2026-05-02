@@ -9,7 +9,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
 
-from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .config_flow import _async_discover_addon
+from .const import CONF_BACKEND_URL, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .coordinator import AIPresenceCoordinator
 from .scanner import async_setup_scanner
 
@@ -20,6 +21,22 @@ PLATFORMS: list[Platform] = [Platform.DEVICE_TRACKER, Platform.SENSOR]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up AIPresence from a config entry."""
+    # Re-discover the add-on URL on every load so the integration
+    # self-heals when the add-on is reinstalled from a different source
+    # (which changes the slug and hostname).
+    discovered_url = await _async_discover_addon(hass)
+    current_url = entry.data.get(CONF_BACKEND_URL, "")
+    if discovered_url and discovered_url != current_url:
+        _LOGGER.info(
+            "Backend URL changed: %s -> %s — updating config entry",
+            current_url,
+            discovered_url,
+        )
+        hass.config_entries.async_update_entry(
+            entry,
+            data={**entry.data, CONF_BACKEND_URL: discovered_url},
+        )
+
     coordinator = AIPresenceCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
 

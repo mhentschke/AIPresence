@@ -504,6 +504,178 @@ class TestBeaconMonitors:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Beacon Discovery
+# ---------------------------------------------------------------------------
+
+
+class _FakeDataSource:
+    """Minimal data source that returns pre-configured entity states."""
+
+    def __init__(self, states: dict | None = None):
+        self._states: dict = states or {}
+
+    def get_entity_state(self, entity_id: str):
+        from backend.datasource import DataSourceUnavailableError
+
+        state = self._states.get(entity_id)
+        if state is None:
+            raise DataSourceUnavailableError(f"Entity {entity_id} not found")
+        return state
+
+    def check_entity_exists(self, entity_id: str) -> bool:
+        return entity_id in self._states
+
+    def list_entities(self, domain=None):
+        return []
+
+
+class TestBeaconDiscovery:
+    def _setup_monitors_and_source(self, client, monitor_states: dict):
+        """Register monitors (skip_validation) and swap in a fake data source."""
+        from backend.datasource import EntityState
+
+        fake_states = {}
+        for eid, attrs in monitor_states.items():
+            client.post(f"/beacon_monitors/{eid}?skip_validation=true")
+            fake_states[eid] = EntityState(state="0", attributes=attrs)
+
+        client.app.state.data_source = _FakeDataSource(fake_states)
+
+    def test_discover_beacons_empty_no_monitors(self, client):
+        resp = client.get("/beacon_monitors/beacons")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_discover_beacons_with_ibeacon(self, client):
+        ibeacon_id = "a3f498e7-c46f-47b4-a767-7c3ad16044fc_100_40004"
+        self._setup_monitors_and_source(
+            client,
+            {
+                "sensor.proxy_office": {
+                    "friendly_name": "Office Proxy",
+                    ibeacon_id: -65.2,
+                },
+            },
+        )
+
+        resp = client.get("/beacon_monitors/beacons")
+        assert resp.status_code == 200
+        beacons = resp.json()
+        assert len(beacons) == 1
+        assert beacons[0]["beacon_id"] == ibeacon_id
+        assert beacons[0]["identifier_type"] == "ibeacon"
+        assert beacons[0]["strongest_signal"] == -65.2
+        assert len(beacons[0]["monitors"]) == 1
+        assert beacons[0]["monitors"][0]["entity_id"] == "sensor.proxy_office"
+
+    def test_discover_beacons_with_mac(self, client):
+        mac_id = "AA:BB:CC:DD:EE:FF"
+        self._setup_monitors_and_source(
+            client,
+            {
+                "sensor.proxy_office": {mac_id: -82.0, "friendly_name": "Office"},
+            },
+        )
+
+        beacons = client.get("/beacon_monitors/beacons").json()
+        assert len(beacons) == 1
+        assert beacons[0]["identifier_type"] == "mac"
+
+    def test_discover_beacons_aggregates_multiple_monitors(self, client):
+        ibeacon_id = "a3f498e7-c46f-47b4-a767-7c3ad16044fc_100_40004"
+        self._setup_monitors_and_source(
+            client,
+            {
+                "sensor.proxy_office": {ibeacon_id: -65.0, "friendly_name": "Office"},
+                "sensor.proxy_bedroom": {ibeacon_id: -89.0, "friendly_name": "Bedroom"},
+            },
+        )
+
+        beacons = client.get("/beacon_monitors/beacons").json()
+        assert len(beacons) == 1
+        assert len(beacons[0]["monitors"]) == 2
+        assert beacons[0]["strongest_signal"] == -65.0
+
+    def test_discover_beacons_device_cross_reference(self, client):
+        ibeacon_id = "a3f498e7-c46f-47b4-a767-7c3ad16044fc_100_40004"
+        self._setup_monitors_and_source(
+            client,
+            {
+                "sensor.proxy_office": {ibeacon_id: -70.0, "friendly_name": "Office"},
+            },
+        )
+
+        # Create a device with this beacon_id
+        dev_resp = client.post("/devices", json={"name": "Dad's Phone", "beacon_id": ibeacon_id})
+        device_id = dev_resp.json()["id"]
+
+        beacons = client.get("/beacon_monitors/beacons").json()
+        assert len(beacons) == 1
+        assert beacons[0]["device_name"] == "Dad's Phone"
+        assert beacons[0]["device_id"] == device_id
+
+    def test_discover_beacons_friendly_name_included(self, client):
+        ibeacon_id = "a3f498e7-c46f-47b4-a767-7c3ad16044fc_100_40004"
+        self._setup_monitors_and_source(
+            client,
+            {
+                "sensor.proxy_office": {ibeacon_id: -70.0, "friendly_name": "Office"},
+            },
+        )
+
+        # Set a friendly name
+        client.put(f"/beacon_names/{ibeacon_id}", json={"friendly_name": "Kitchen Tag"})
+
+        beacons = client.get("/beacon_monitors/beacons").json()
+        assert beacons[0]["friendly_name"] == "Kitchen Tag"
+
+    def test_discover_beacons_ha_unavailable_returns_empty(self, client):
+        """When data source raises for all monitors, return empty list."""
+
+        client.post("/beacon_monitors/sensor.proxy_office?skip_validation=true")
+        # Default StandaloneDataSource raises — that's the HA unavailable case
+        resp = client.get("/beacon_monitors/beacons")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_discover_beacons_filters_meta_keys(self, client):
+        """Metadata attributes like friendly_name, icon should not appear as beacons."""
+        self._setup_monitors_and_source(
+            client,
+            {
+                "sensor.proxy_office": {
+                    "friendly_name": "Office Proxy",
+                    "icon": "mdi:bluetooth",
+                    "unit_of_measurement": "dBm",
+                    "real_beacon": -75.0,
+                },
+            },
+        )
+
+        beacons = client.get("/beacon_monitors/beacons").json()
+        assert len(beacons) == 1
+        assert beacons[0]["beacon_id"] == "real_beacon"
+        assert beacons[0]["identifier_type"] == "unknown"
+
+    def test_discover_beacons_sorted_by_monitor_count(self, client):
+        beacon_a = "a3f498e7-c46f-47b4-a767-7c3ad16044fc_100_40004"
+        beacon_b = "AA:BB:CC:DD:EE:FF"
+        self._setup_monitors_and_source(
+            client,
+            {
+                "sensor.proxy_office": {beacon_a: -65.0, beacon_b: -80.0, "friendly_name": "Office"},
+                "sensor.proxy_bedroom": {beacon_a: -89.0, "friendly_name": "Bedroom"},
+            },
+        )
+
+        beacons = client.get("/beacon_monitors/beacons").json()
+        assert len(beacons) == 2
+        # beacon_a seen by 2 monitors, beacon_b by 1 — beacon_a should be first
+        assert beacons[0]["beacon_id"] == beacon_a
+        assert beacons[1]["beacon_id"] == beacon_b
+
+
 class TestBeaconNames:
     def test_list_beacon_names_empty(self, client):
         resp = client.get("/beacon_names")

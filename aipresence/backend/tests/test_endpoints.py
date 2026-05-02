@@ -22,6 +22,7 @@ from backend.db.sqlite import SQLiteRepository
 from backend.dependencies import get_data_source
 from backend.errors import generic_exception_handler, value_error_handler
 from backend.routes.beacon_monitors import router as beacon_monitors_router
+from backend.routes.beacon_names import router as beacon_names_router
 from backend.routes.devices import router as devices_router
 from backend.routes.rooms import router as rooms_router
 from backend.routes.sensors import router as sensors_router
@@ -44,6 +45,7 @@ def _create_test_app() -> FastAPI:
         app.state.devices = {}
         app.state.rooms = {}
         app.state.beacon_monitors = {}
+        app.state.beacon_names = {}
         app.state.repository = SQLiteRepository(":memory:")
         yield
 
@@ -61,6 +63,7 @@ def _create_test_app() -> FastAPI:
     app.include_router(sensors_router, prefix="/sensors")
     app.include_router(devices_router, prefix="/devices")
     app.include_router(beacon_monitors_router, prefix="/beacon_monitors")
+    app.include_router(beacon_names_router, prefix="/beacon_names")
 
     @app.get("/device/check_entity_id/{entity_id}")
     def check_entity_id(entity_id: str, data_source=Depends(get_data_source)):
@@ -494,3 +497,55 @@ class TestBeaconMonitors:
     def test_delete_beacon_monitor_not_found(self, client):
         resp = client.delete("/beacon_monitors/nonexistent")
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Beacon Names CRUD
+# ---------------------------------------------------------------------------
+
+
+class TestBeaconNames:
+    def test_list_beacon_names_empty(self, client):
+        resp = client.get("/beacon_names")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_create_and_list_beacon_name(self, client):
+        resp = client.put(
+            "/beacon_names/a3f498e7-c46f-47b4-a767-7c3ad16044fc_100_40004",
+            json={"friendly_name": "Dad's Phone"},
+        )
+        assert resp.status_code == 200
+
+        names = client.get("/beacon_names").json()
+        assert len(names) == 1
+        assert names[0]["beacon_id"] == "a3f498e7-c46f-47b4-a767-7c3ad16044fc_100_40004"
+        assert names[0]["friendly_name"] == "Dad's Phone"
+
+    def test_update_beacon_name(self, client):
+        beacon_id = "a3f498e7-c46f-47b4-a767-7c3ad16044fc_100_40004"
+        client.put(f"/beacon_names/{beacon_id}", json={"friendly_name": "Dad's Phone"})
+        client.put(f"/beacon_names/{beacon_id}", json={"friendly_name": "Mom's Phone"})
+
+        names = client.get("/beacon_names").json()
+        assert len(names) == 1
+        assert names[0]["friendly_name"] == "Mom's Phone"
+
+    def test_delete_beacon_name(self, client):
+        beacon_id = "AA:BB:CC:DD:EE:FF"
+        client.put(f"/beacon_names/{beacon_id}", json={"friendly_name": "Kitchen Tag"})
+        resp = client.delete(f"/beacon_names/{beacon_id}")
+        assert resp.status_code == 200
+        assert client.get("/beacon_names").json() == []
+
+    def test_delete_beacon_name_not_found(self, client):
+        resp = client.delete("/beacon_names/nonexistent")
+        assert resp.status_code == 404
+
+    def test_put_empty_friendly_name_400(self, client):
+        resp = client.put("/beacon_names/some_id", json={"friendly_name": "   "})
+        assert resp.status_code == 400
+
+    def test_put_missing_friendly_name_422(self, client):
+        resp = client.put("/beacon_names/some_id", json={})
+        assert resp.status_code == 422

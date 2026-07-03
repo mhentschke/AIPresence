@@ -31,6 +31,10 @@ def get_beacon_monitors(request: Request):
     return request.app.state.beacon_monitors
 
 
+def get_beacon_names(request: Request):
+    return request.app.state.beacon_names
+
+
 def get_repository(request: Request):
     return request.app.state.repository
 

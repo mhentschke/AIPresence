@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useToast } from './ToastContext';
+import { useBeaconNames } from './BeaconNameContext';
+import { Backend } from '../Backend';
 import modalStyles from './Modal.module.css';
 import btnStyles from './Button.module.css';
 import EntityPicker from './EntityPicker';
@@ -7,6 +9,7 @@ import EntityPicker from './EntityPicker';
 const DeviceEditModal = ({ data, setData, modal, setModal, deviceCursor, backend }) => {
 
     const { addToast } = useToast();
+    const { refreshBeaconNames } = useBeaconNames();
 
     const toggleModal = () => {
         setModal(!modal)
@@ -69,17 +72,36 @@ const DeviceEditModal = ({ data, setData, modal, setModal, deviceCursor, backend
 
         setSaving(true);
         try {
+            let result;
             if (deviceCursor === -1) {
-                const result = await backend.CreateDevice(device);
+                result = await backend.CreateDevice(device);
                 device.id = result.id;
                 updatedData.push(device);
                 addToast("Device created successfully", "success");
             } else {
                 device.id = data[deviceCursor].id;
-                await backend.UpdateDevice(device);
+                result = await backend.UpdateDevice(device);
                 updatedData[deviceCursor] = device;
                 addToast("Device updated successfully", "success");
             }
+
+            // Auto-name prompt: if beacon already has a different friendly name
+            if (device.beacon_id && result && result.existing_beacon_name) {
+                const overwrite = window.confirm(
+                    `This beacon is already named '${result.existing_beacon_name}'. Overwrite with '${device.name}'?`
+                );
+                if (overwrite) {
+                    try {
+                        await Backend.SetBeaconName(device.beacon_id, device.name);
+                    } catch (err) {
+                        addToast("Error updating beacon name: " + err.message, "error");
+                    }
+                }
+            }
+
+            // Always refresh beacon names after device save
+            refreshBeaconNames();
+
             toggleModal();
             setData(updatedData);
         } catch (err) {

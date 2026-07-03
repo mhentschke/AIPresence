@@ -1,6 +1,6 @@
 {
   "name": "client",
-  "version": "0.1.0-dev.7",
+  "version": "0.1.0-dev.8",
   "private": true,
   "dependencies": {
     "@tanstack/react-table": "^8.9.3",

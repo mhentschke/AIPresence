@@ -97,3 +97,32 @@ class RoomAverages(BaseModel):
 class TrainingAveragesResponse(BaseModel):
     rooms: dict[str, RoomAverages]
     feature_columns: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Beacon Names
+# ---------------------------------------------------------------------------
+
+
+class BeaconNameUpdate(BaseModel):
+    friendly_name: str
+
+
+class BeaconNameResponse(BaseModel):
+    beacon_id: str
+    friendly_name: str
+
+
+class MonitorSignal(BaseModel):
+    entity_id: str
+    signal_value: float
+
+
+class DiscoveredBeacon(BaseModel):
+    beacon_id: str
+    friendly_name: Optional[str] = None
+    identifier_type: str  # "ibeacon", "mac", "unknown"
+    device_name: Optional[str] = None
+    device_id: Optional[str] = None
+    monitors: list[MonitorSignal]
+    strongest_signal: Optional[float] = None

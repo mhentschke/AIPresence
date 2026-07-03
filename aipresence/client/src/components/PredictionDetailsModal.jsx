@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useBeaconNames } from './BeaconNameContext';
 import SignalChart from './SignalChart';
 import modalStyles from './Modal.module.css';
 import btnStyles from './Button.module.css';
 import styles from './PredictionDetailsModal.module.css';
 
 const PredictionDetailsModal = ({ device, rooms, modal, setModal, backend }) => {
+  const { beaconNames } = useBeaconNames();
   const [prediction, setPrediction] = useState(null);
   const [signalBars, setSignalBars] = useState([]);
   const [trainingAverages, setTrainingAverages] = useState(null);
@@ -173,6 +175,7 @@ const PredictionDetailsModal = ({ device, rooms, modal, setModal, backend }) => 
                         ? `${trainingAverages.rooms[selectedRoom].name} Avg`
                         : 'Training Avg'
                     }
+                    beaconNames={beaconNames}
                   />
                 </div>
               )}

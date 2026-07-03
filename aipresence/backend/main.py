@@ -35,6 +35,7 @@ from .db.sqlite import SQLiteRepository
 from .dependencies import get_data_source, get_settings
 from .errors import generic_exception_handler, value_error_handler
 from .routes.beacon_monitors import router as beacon_monitors_router
+from .routes.beacon_names import router as beacon_names_router
 from .routes.devices import router as devices_router
 from .routes.rooms import router as rooms_router
 from .routes.sensors import router as sensors_router
@@ -95,6 +96,8 @@ async def lifespan(app: FastAPI):
     app.state.beacon_monitors = {}
     for k, v in repo.load_all_beacon_monitors().items():
         app.state.beacon_monitors[k] = BeaconMonitor(entity_id=v["entity_id"], data_source=data_source)
+
+    app.state.beacon_names = repo.load_all_beacon_names()
 
     # Build a per-device data gatherer factory.
     # Each device gets its own gatherer that collects only data relevant to locating THAT device:
@@ -205,6 +208,7 @@ app.include_router(trackers_router, prefix="/trackers", tags=["trackers"])
 app.include_router(sensors_router, prefix="/sensors", tags=["sensors"])
 app.include_router(rooms_router, prefix="/rooms", tags=["rooms"])
 app.include_router(beacon_monitors_router, prefix="/beacon_monitors", tags=["beacon_monitors"])
+app.include_router(beacon_names_router, prefix="/beacon_names", tags=["beacon_names"])
 
 
 # --- App-level route (doesn't belong to a specific domain) ---
@@ -442,6 +446,8 @@ async def restore_backup(request: Request, file: UploadFile, settings=Depends(ge
             request.app.state.beacon_monitors = {}
             for k, v in new_repo.load_all_beacon_monitors().items():
                 request.app.state.beacon_monitors[k] = BeaconMonitor(entity_id=v["entity_id"], data_source=data_source)
+
+            request.app.state.beacon_names = new_repo.load_all_beacon_names()
 
             # Rebuild devices with models
             def make_data_gatherer(device_entity_id, device_beacon_id):

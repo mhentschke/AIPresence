@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useToast } from './ToastContext';
+import { useBeaconNames } from './BeaconNameContext';
 import styles from './DeviceTable.module.css';
 import btnStyles from './Button.module.css';
 
 
 const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, deviceTrainModal, predictionDetailsModal, backend}) => {
   const { addToast } = useToast();
+  const { resolveBeaconName } = useBeaconNames();
   const [expandedRow, setExpandedRow] = useState(null);
 
   const toggleRow = (rowIndex) => {
@@ -34,7 +36,22 @@ const DeviceTable = ({ data, setData, deviceEditModal, deviceSelector, deviceTra
           {data.map((device, index) => (
             <React.Fragment key={device.id}>
               <tr>
-                <td>{device.type === "Both" ? `Both: ${device.entity_id} / ${device.beacon_id}` : device.type + ": " + device.identifier}</td>
+                <td>{(() => {
+                  if (device.type === "Both") {
+                    const resolved = resolveBeaconName(device.beacon_id);
+                    const beaconDisplay = resolved.isNamed
+                      ? <span title={device.beacon_id}>{resolved.display}</span>
+                      : device.beacon_id;
+                    return <>Both: {device.entity_id} / {beaconDisplay}</>;
+                  }
+                  if (device.beacon_id) {
+                    const resolved = resolveBeaconName(device.beacon_id);
+                    if (resolved.isNamed) {
+                      return <span title={device.beacon_id}>{device.type}: {resolved.display}</span>;
+                    }
+                  }
+                  return device.type + ": " + device.identifier;
+                })()}</td>
                 <td>{device.name}</td>
                 <td>{device.trained}</td>
                 <td>{device.accuracy}</td>

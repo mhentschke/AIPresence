@@ -45,6 +45,12 @@ MIGRATIONS: dict[int, str] = {
             entity_id TEXT PRIMARY KEY
         );
     """,
+    3: """
+        CREATE TABLE IF NOT EXISTS beacon_names (
+            beacon_id TEXT PRIMARY KEY,
+            friendly_name TEXT NOT NULL
+        );
+    """,
 }
 
 
@@ -249,6 +255,25 @@ class SQLiteRepository:
             "classification_report": json.loads(row["classification_report"]),
             "trained_columns": json.loads(row["trained_columns"]),
         }
+
+    # ------------------------------------------------------------------
+    # Beacon Names
+    # ------------------------------------------------------------------
+
+    def save_beacon_name(self, beacon_id: str, friendly_name: str) -> None:
+        self.conn.execute(
+            "INSERT OR REPLACE INTO beacon_names (beacon_id, friendly_name) VALUES (?, ?)",
+            (beacon_id, friendly_name),
+        )
+        self.conn.commit()
+
+    def delete_beacon_name(self, beacon_id: str) -> None:
+        self.conn.execute("DELETE FROM beacon_names WHERE beacon_id = ?", (beacon_id,))
+        self.conn.commit()
+
+    def load_all_beacon_names(self) -> dict[str, str]:
+        rows = self.conn.execute("SELECT beacon_id, friendly_name FROM beacon_names").fetchall()
+        return {row["beacon_id"]: row["friendly_name"] for row in rows}
 
     # ------------------------------------------------------------------
     # Lifecycle

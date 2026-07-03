@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from './ToastContext';
+import { useBeaconNames } from './BeaconNameContext';
 import SignalChart from './SignalChart';
 import modalStyles from './Modal.module.css';
 import btnStyles from './Button.module.css';
@@ -8,6 +9,7 @@ import styles from './DeviceTrainingModal.module.css';
 const DeviceTrainingModal = ({ devices, setDevices, rooms, modal, setModal, deviceCursor, backend, getElementFromId }) => {
 
     const { addToast } = useToast();
+    const { beaconNames } = useBeaconNames();
 
     const [trainingOverwrite, setTrainingOverwrite] = useState(false);
     const [roomTrainingProgress, setRoomTrainingProgress] = useState(0);
@@ -189,6 +191,7 @@ const DeviceTrainingModal = ({ devices, setDevices, rooms, modal, setModal, devi
                                         bars={signalBars}
                                         title="Signal Readings"
                                         overlayLabel="Training Avg"
+                                        beaconNames={beaconNames}
                                     />
                                 </div>
                             )}

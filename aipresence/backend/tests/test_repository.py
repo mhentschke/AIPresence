@@ -21,7 +21,7 @@ class TestSchemaMigration:
     def test_initial_migration_creates_tables(self, repo):
         tables = repo.conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()
         names = {row["name"] for row in tables}
-        assert {"rooms", "trackers", "sensors", "devices", "model_metadata"}.issubset(names)
+        assert {"rooms", "trackers", "sensors", "devices", "model_metadata", "beacon_names"}.issubset(names)
 
     def test_schema_version_is_set(self, repo):
         row = repo.conn.execute("SELECT version FROM schema_version").fetchone()
@@ -176,3 +176,37 @@ class TestModelMetadata:
         repo.save_model_metadata("d1", "d1/", 0.9, "RF", {}, [])
         repo.delete_model_metadata("d1")
         assert repo.load_model_metadata("d1") is None
+
+
+# ------------------------------------------------------------------
+# Beacon Names CRUD
+# ------------------------------------------------------------------
+
+
+class TestBeaconNames:
+    def test_save_and_load(self, repo):
+        repo.save_beacon_name("a3f498e7_100_40004", "Dad's Phone")
+        names = repo.load_all_beacon_names()
+        assert names == {"a3f498e7_100_40004": "Dad's Phone"}
+
+    def test_upsert(self, repo):
+        repo.save_beacon_name("a3f498e7_100_40004", "Dad's Phone")
+        repo.save_beacon_name("a3f498e7_100_40004", "Kitchen Tag")
+        names = repo.load_all_beacon_names()
+        assert names["a3f498e7_100_40004"] == "Kitchen Tag"
+
+    def test_delete(self, repo):
+        repo.save_beacon_name("a3f498e7_100_40004", "Dad's Phone")
+        repo.delete_beacon_name("a3f498e7_100_40004")
+        assert repo.load_all_beacon_names() == {}
+
+    def test_load_empty(self, repo):
+        assert repo.load_all_beacon_names() == {}
+
+    def test_multiple_entries(self, repo):
+        repo.save_beacon_name("beacon_1", "Phone")
+        repo.save_beacon_name("beacon_2", "Tablet")
+        names = repo.load_all_beacon_names()
+        assert len(names) == 2
+        assert names["beacon_1"] == "Phone"
+        assert names["beacon_2"] == "Tablet"

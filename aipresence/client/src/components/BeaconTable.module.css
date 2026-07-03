@@ -1,0 +1,203 @@
+.wrapper {
+  overflow-x: auto;
+}
+
+.table {
+  composes: table from './Table.module.css';
+}
+
+/* Identifier column: truncated text */
+.identifier {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+  font-size: var(--font-size-sm);
+  cursor: help;
+}
+
+/* Type badge */
+.badge {
+  display: inline-block;
+  padding: 2px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs, 0.7rem);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.badgeIbeacon {
+  composes: badge;
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.badgeMac {
+  composes: badge;
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.badgeUnknown {
+  composes: badge;
+  background: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+}
+
+/* Name cell */
+.nameCell {
+  min-width: 140px;
+}
+
+.nameDisplay {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+  padding: 2px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: background 0.1s ease;
+}
+
+.nameDisplay:hover {
+  background: var(--color-surface-hover);
+}
+
+.nameText {
+  font-size: var(--font-size-md);
+}
+
+.namePlaceholder {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.editIcon {
+  font-size: var(--font-size-xs, 0.7rem);
+  color: var(--color-text-secondary);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.nameDisplay:hover .editIcon {
+  opacity: 1;
+}
+
+/* Inline edit input */
+.nameInput {
+  width: 100%;
+  padding: 2px var(--spacing-xs);
+  font-size: var(--font-size-md);
+  font-family: var(--font-family);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  outline: none;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+/* Clickable row */
+.clickableRow {
+  cursor: pointer;
+}
+
+/* Expanded detail row */
+.expandedRow td {
+  padding: 0 !important;
+  border-bottom: 2px solid var(--color-divider);
+}
+
+.expandedContent {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.detailSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.detailLabel {
+  font-size: var(--font-size-xs, 0.7rem);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.detailValue {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.deviceLink {
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.monitorReadings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.monitorReading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+
+.monitorName {
+  flex: 0 0 200px;
+  font-family: monospace;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.monitorValue {
+  font-variant-numeric: tabular-nums;
+  font-family: monospace;
+  color: var(--color-text-primary);
+}
+
+/* Device column placeholder */
+.devicePlaceholder {
+  color: var(--color-text-secondary);
+}
+
+/* Loading and empty states */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing-xl) 0;
+}
+
+.emptyState {
+  text-align: center;
+  padding: var(--spacing-xl) var(--spacing-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
+}
+
+/* Transient indicator for unnamed MACs */
+.transientHint {
+  font-size: var(--font-size-xs, 0.7rem);
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin-left: var(--spacing-xs);
+}

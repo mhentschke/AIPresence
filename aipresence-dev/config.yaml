@@ -2,7 +2,7 @@
 # This add-on tracks pre-release/dev builds.
 # Install alongside the stable "AIPresence" add-on for testing.
 name: AIPresence Dev
-version: "0.1.0-dev.9"
+version: "0.1.0"
 slug: aipresence-dev
 description: "AIPresence development build — room-level presence detection (pre-release)"
 url: "https://github.com/mhentschke/AIPresence"

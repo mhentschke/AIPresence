@@ -33,17 +33,23 @@ jobs:
           TAG_VERSION="${{ steps.extract.outputs.version }}"
 
           ADDON_VERSION=$(grep '^version:' aipresence/config.yaml | sed 's/version: *"\?\([^"]*\)"\?/\1/')
+          ADDON_DEV_VERSION=$(grep '^version:' aipresence-dev/config.yaml | sed 's/version: *"\?\([^"]*\)"\?/\1/')
           INTEGRATION_VERSION=$(python3 -c "import json; print(json.load(open('custom_components/aipresence/manifest.json'))['version'])")
           FRONTEND_VERSION=$(python3 -c "import json; print(json.load(open('aipresence/client/package.json'))['version'])")
 
           echo "Tag version:         $TAG_VERSION"
           echo "Add-on version:      $ADDON_VERSION"
+          echo "Add-on Dev version:  $ADDON_DEV_VERSION"
           echo "Integration version: $INTEGRATION_VERSION"
           echo "Frontend version:    $FRONTEND_VERSION"
 
           MISMATCH=0
           if [[ "$ADDON_VERSION" != "$TAG_VERSION" ]]; then
             echo "::error::Add-on version ($ADDON_VERSION) does not match tag ($TAG_VERSION)"
+            MISMATCH=1
+          fi
+          if [[ "$ADDON_DEV_VERSION" != "$TAG_VERSION" ]]; then
+            echo "::error::Add-on Dev version ($ADDON_DEV_VERSION) does not match tag ($TAG_VERSION)"
             MISMATCH=1
           fi
           if [[ "$INTEGRATION_VERSION" != "$TAG_VERSION" ]]; then
@@ -87,11 +93,21 @@ jobs:
         run: |
           VERSION="${{ needs.validate-version.outputs.version }}"
           IS_PRE="${{ needs.validate-version.outputs.is_prerelease }}"
+
+          # Stable image (always built)
           BASE="${{ env.REGISTRY }}/mhentschke/aipresence-amd64"
           TAGS="${BASE}:${VERSION}"
           if [[ "$IS_PRE" == "false" ]]; then
             TAGS="${TAGS},${BASE}:latest"
           fi
+
+          # Dev image (also tagged for the aipresence-dev add-on)
+          DEV_BASE="${{ env.REGISTRY }}/mhentschke/aipresence-dev-amd64"
+          TAGS="${TAGS},${DEV_BASE}:${VERSION}"
+          if [[ "$IS_PRE" == "false" ]]; then
+            TAGS="${TAGS},${DEV_BASE}:latest"
+          fi
+
           echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
 
       - name: Build and push (amd64)
@@ -141,11 +157,21 @@ jobs:
           VERSION="${{ needs.validate-version.outputs.version }}"
           IS_PRE="${{ needs.validate-version.outputs.is_prerelease }}"
           ARCH="${{ matrix.arch }}"
+
+          # Stable image (always built)
           BASE="${{ env.REGISTRY }}/mhentschke/aipresence-${ARCH}"
           TAGS="${BASE}:${VERSION}"
           if [[ "$IS_PRE" == "false" ]]; then
             TAGS="${TAGS},${BASE}:latest"
           fi
+
+          # Dev image (also tagged for the aipresence-dev add-on)
+          DEV_BASE="${{ env.REGISTRY }}/mhentschke/aipresence-dev-${ARCH}"
+          TAGS="${TAGS},${DEV_BASE}:${VERSION}"
+          if [[ "$IS_PRE" == "false" ]]; then
+            TAGS="${TAGS},${DEV_BASE}:latest"
+          fi
+
           echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
 
       - name: Build and push (${{ matrix.arch }})

@@ -38,11 +38,15 @@ echo "Bumping version to $VERSION ..."
 sed -i "s/^version: .*/version: \"$VERSION\"/" "$REPO_ROOT/aipresence/config.yaml"
 echo "  ✓ aipresence/config.yaml"
 
-# 2. custom_components/aipresence/manifest.json
+# 2. aipresence-dev/config.yaml
+sed -i "s/^version: .*/version: \"$VERSION\"/" "$REPO_ROOT/aipresence-dev/config.yaml"
+echo "  ✓ aipresence-dev/config.yaml"
+
+# 3. custom_components/aipresence/manifest.json
 sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$REPO_ROOT/custom_components/aipresence/manifest.json"
 echo "  ✓ custom_components/aipresence/manifest.json"
 
-# 3. aipresence/client/package.json (only the top-level "version" field)
+# 4. aipresence/client/package.json (only the top-level "version" field)
 sed -i "0,/\"version\": \"[^\"]*\"/{s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/}" "$REPO_ROOT/aipresence/client/package.json"
 echo "  ✓ aipresence/client/package.json"
 
@@ -54,6 +58,7 @@ if $CREATE_TAG; then
   echo "Creating git commit and tag..."
   git add \
     "$REPO_ROOT/aipresence/config.yaml" \
+    "$REPO_ROOT/aipresence-dev/config.yaml" \
     "$REPO_ROOT/custom_components/aipresence/manifest.json" \
     "$REPO_ROOT/aipresence/client/package.json"
   git commit -m "release: v$VERSION"

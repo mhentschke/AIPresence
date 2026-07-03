@@ -721,3 +721,112 @@ class TestBeaconNames:
     def test_put_missing_friendly_name_422(self, client):
         resp = client.put("/beacon_names/some_id", json={})
         assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Device Auto-Naming (Requirements 5.1, 5.2, 5.5)
+# ---------------------------------------------------------------------------
+
+
+class TestDeviceAutoNaming:
+    """Tests for automatic beacon friendly name creation on device create/update."""
+
+    def test_create_device_with_beacon_id_auto_creates_name(self, client):
+        """Req 5.1: Creating a device with a beacon_id auto-creates a friendly name."""
+        beacon_id = "a3f498e7-c46f-47b4-a767-7c3ad16044fc_100_40004"
+        resp = client.post("/devices", json={"name": "Dad's Phone", "beacon_id": beacon_id})
+        assert resp.status_code == 200
+        body = resp.json()
+        # No existing_beacon_name in response means auto-creation happened
+        assert "existing_beacon_name" not in body
+
+        # Verify the friendly name was created
+        names = client.get("/beacon_names").json()
+        assert len(names) == 1
+        assert names[0]["beacon_id"] == beacon_id
+        assert names[0]["friendly_name"] == "Dad's Phone"
+
+    def test_create_device_with_existing_beacon_name_returns_it(self, client):
+        """Req 5.2: Creating a device with a beacon_id that already has a name returns existing_beacon_name."""
+        beacon_id = "a3f498e7-c46f-47b4-a767-7c3ad16044fc_100_40004"
+
+        # Pre-assign a friendly name
+        client.put(f"/beacon_names/{beacon_id}", json={"friendly_name": "Kitchen Tag"})
+
+        # Create a device with the same beacon_id
+        resp = client.post("/devices", json={"name": "New Device", "beacon_id": beacon_id})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["existing_beacon_name"] == "Kitchen Tag"
+
+        # Verify the name was NOT overwritten
+        names = client.get("/beacon_names").json()
+        assert len(names) == 1
+        assert names[0]["friendly_name"] == "Kitchen Tag"
+
+    def test_update_device_with_beacon_id_auto_creates_name(self, client):
+        """Req 5.1: Updating a device with a beacon_id auto-creates a friendly name if none exists."""
+        # Create device without beacon_id
+        resp = client.post("/devices", json={"name": "Phone", "entity_id": "sensor.phone"})
+        device_id = resp.json()["id"]
+
+        # Update with a beacon_id — should auto-create name
+        beacon_id = "AA:BB:CC:DD:EE:FF"
+        resp = client.put(
+            f"/devices/{device_id}", json={"name": "Phone", "entity_id": "sensor.phone", "beacon_id": beacon_id}
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "existing_beacon_name" not in body
+
+        # Verify the friendly name was created
+        names = client.get("/beacon_names").json()
+        assert len(names) == 1
+        assert names[0]["beacon_id"] == beacon_id
+        assert names[0]["friendly_name"] == "Phone"
+
+    def test_update_device_with_existing_beacon_name_returns_it(self, client):
+        """Req 5.2: Updating a device with a beacon_id that already has a name returns existing_beacon_name."""
+        beacon_id = "AA:BB:CC:DD:EE:FF"
+
+        # Pre-assign a friendly name
+        client.put(f"/beacon_names/{beacon_id}", json={"friendly_name": "Living Room Tag"})
+
+        # Create a device and update it with the beacon_id
+        resp = client.post("/devices", json={"name": "Tablet", "entity_id": "sensor.tablet"})
+        device_id = resp.json()["id"]
+
+        resp = client.put(
+            f"/devices/{device_id}", json={"name": "Tablet", "entity_id": "sensor.tablet", "beacon_id": beacon_id}
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["existing_beacon_name"] == "Living Room Tag"
+
+        # Verify the name was NOT overwritten
+        names = client.get("/beacon_names").json()
+        assert len(names) == 1
+        assert names[0]["friendly_name"] == "Living Room Tag"
+
+    def test_delete_device_retains_beacon_name(self, client):
+        """Req 5.5: Deleting a device retains the beacon's friendly name mapping."""
+        beacon_id = "a3f498e7-c46f-47b4-a767-7c3ad16044fc_100_40004"
+
+        # Create device — auto-creates beacon name
+        resp = client.post("/devices", json={"name": "Dad's Phone", "beacon_id": beacon_id})
+        device_id = resp.json()["id"]
+
+        # Verify name exists
+        names = client.get("/beacon_names").json()
+        assert len(names) == 1
+        assert names[0]["friendly_name"] == "Dad's Phone"
+
+        # Delete the device
+        resp = client.delete(f"/devices/{device_id}")
+        assert resp.status_code == 200
+
+        # Verify the beacon name is still there
+        names = client.get("/beacon_names").json()
+        assert len(names) == 1
+        assert names[0]["beacon_id"] == beacon_id
+        assert names[0]["friendly_name"] == "Dad's Phone"

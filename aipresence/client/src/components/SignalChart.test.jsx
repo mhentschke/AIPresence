@@ -15,9 +15,9 @@ const barsWithOverlay = [
 test('renders a bar for each signal entry with normalized percentage', () => {
   render(<SignalChart bars={sampleBars} />);
 
+  // Labels without "-" render as full text, no tooltip
   sampleBars.forEach((bar) => {
-    // Full label is in the title attribute
-    expect(screen.getByTitle(bar.label)).toBeInTheDocument();
+    expect(screen.getByText(bar.label)).toBeInTheDocument();
   });
   // Values should show as percentages (e.g. "100%", "0%")
   expect(screen.getAllByText(/%$/).length).toBe(sampleBars.length);
@@ -64,11 +64,14 @@ test('strips monitor prefix and truncates long beacon IDs', () => {
   const bars = [{ label: fullKey, value: -70 }];
   render(<SignalChart bars={bars} />);
 
-  const el = screen.getByTitle(fullKey);
+  // No beaconNames passed, so no tooltip — find by text content
+  const labelEl = screen.getByText(/…/);
   // Should not contain the monitor entity prefix
-  expect(el.textContent).not.toContain('sensor.phone_monitor');
+  expect(labelEl.textContent).not.toContain('sensor.phone_monitor');
   // Should be truncated with ellipsis
-  expect(el.textContent).toContain('…');
+  expect(labelEl.textContent).toContain('…');
+  // No tooltip when no friendly name is resolved
+  expect(labelEl).not.toHaveAttribute('title');
 });
 
 test('shows full label for short keys without monitor prefix', () => {
@@ -76,6 +79,56 @@ test('shows full label for short keys without monitor prefix', () => {
   const bars = [{ label: key, value: 1 }];
   render(<SignalChart bars={bars} />);
 
-  const el = screen.getByTitle(key);
+  const el = screen.getByText(key);
   expect(el.textContent).toBe(key);
+  // No tooltip for keys without "-"
+  expect(el).not.toHaveAttribute('title');
+});
+
+test('displays friendly name when beaconNames maps the beacon portion', () => {
+  const fullKey = 'sensor.office_proxy-abc123_100_200';
+  const bars = [{ label: fullKey, value: -65 }];
+  const beaconNames = { 'abc123_100_200': "Dad's Phone" };
+
+  render(<SignalChart bars={bars} beaconNames={beaconNames} />);
+
+  // Friendly name is displayed
+  expect(screen.getByText("Dad's Phone")).toBeInTheDocument();
+  // Full key is in the tooltip
+  expect(screen.getByTitle(fullKey)).toBeInTheDocument();
+});
+
+test('falls back to beacon portion when beaconNames has no entry', () => {
+  const fullKey = 'sensor.office_proxy-unknown_beacon_id';
+  const bars = [{ label: fullKey, value: -72 }];
+  const beaconNames = { 'some_other_beacon': 'Other Device' };
+
+  render(<SignalChart bars={bars} beaconNames={beaconNames} />);
+
+  // Shows the raw beacon portion (after the dash)
+  expect(screen.getByText('unknown_beacon_id')).toBeInTheDocument();
+  // No tooltip when no friendly name
+  const labelEl = screen.getByText('unknown_beacon_id');
+  expect(labelEl).not.toHaveAttribute('title');
+});
+
+test('shows no tooltip when beaconNames prop is not provided', () => {
+  const fullKey = 'sensor.monitor-some_beacon';
+  const bars = [{ label: fullKey, value: -60 }];
+
+  render(<SignalChart bars={bars} />);
+
+  const labelEl = screen.getByText('some_beacon');
+  expect(labelEl).not.toHaveAttribute('title');
+});
+
+test('handles empty beaconNames object gracefully', () => {
+  const fullKey = 'sensor.monitor-beacon_xyz';
+  const bars = [{ label: fullKey, value: -55 }];
+
+  render(<SignalChart bars={bars} beaconNames={{}} />);
+
+  expect(screen.getByText('beacon_xyz')).toBeInTheDocument();
+  const labelEl = screen.getByText('beacon_xyz');
+  expect(labelEl).not.toHaveAttribute('title');
 });

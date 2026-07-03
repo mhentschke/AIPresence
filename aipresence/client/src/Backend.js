@@ -207,6 +207,42 @@ export class Backend {
     return resp.json();
   }
 
+  // ---- Beacon Names ----
+
+  static async GetBeaconNames() {
+    const resp = await apiCall('/beacon_names');
+    const data = await resp.json();
+    const map = {};
+    for (const entry of data) {
+      map[entry.beacon_id] = entry.friendly_name;
+    }
+    return map;
+  }
+
+  static async SetBeaconName(beaconId, friendlyName) {
+    const resp = await apiCall('/beacon_names/' + encodeURIComponent(beaconId), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ friendly_name: friendlyName }),
+    });
+    return resp.json();
+  }
+
+  static async DeleteBeaconName(beaconId) {
+    const resp = await apiCall('/beacon_names/' + encodeURIComponent(beaconId), {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return resp.json();
+  }
+
+  // ---- Beacon Discovery ----
+
+  static async GetDiscoveredBeacons() {
+    const resp = await apiCall('/beacon_monitors/beacons');
+    return resp.json();
+  }
+
   // ---- Beacon Monitors ----
 
   static async GetBeaconMonitors() {

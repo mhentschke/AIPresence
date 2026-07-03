@@ -1,0 +1,52 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spacing-xs) 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.name {
+  flex: 0 0 120px;
+  font-size: var(--font-size-xs, 0.7rem);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+}
+
+.track {
+  flex: 1;
+  min-width: 60px;
+  height: 10px;
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: var(--radius-sm);
+  transition: width 0.3s ease;
+}
+
+.value {
+  flex: 0 0 32px;
+  font-size: var(--font-size-xs, 0.7rem);
+  color: var(--color-text-primary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: monospace;
+}
+
+.empty {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}

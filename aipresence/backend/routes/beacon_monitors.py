@@ -4,6 +4,7 @@ import re
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..classes import _BEACON_MONITOR_META_KEYS, BeaconMonitor
+from ..datasource import DataSourceUnavailableError
 from ..dependencies import (
     get_beacon_monitors,
     get_beacon_names,
@@ -51,8 +52,11 @@ def discover_beacons(
                 if not isinstance(value, (int, float)):
                     continue
                 aggregated.setdefault(key, []).append({"entity_id": monitor_eid, "signal_value": value})
+        except DataSourceUnavailableError:
+            logger.debug("Monitor %s unavailable during beacon discovery", monitor_eid)
+            continue
         except Exception:
-            logger.debug("Skipping monitor %s during beacon discovery", monitor_eid)
+            logger.warning("Unexpected error querying monitor %s during beacon discovery", monitor_eid, exc_info=True)
             continue
 
     # Build device lookup: beacon_id -> (device_id, device_name)

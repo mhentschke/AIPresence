@@ -9,14 +9,40 @@ import styles from './SignalChart.module.css';
  * the beacon/attribute portion. The full key goes in the tooltip.
  * For keys without a "-" (e.g. binary sensors), show the full label.
  *
+ * If a beaconNames mapping is provided and the beacon portion has a friendly
+ * name, the friendly name is returned instead.
+ *
  * Long results are truncated as start…end.
  */
-function displayLabel(fullKey, maxLen = 30) {
+function displayLabel(fullKey, beaconNames, maxLen = 30) {
   const dashIdx = fullKey.indexOf('-');
-  const short = dashIdx >= 0 ? fullKey.slice(dashIdx + 1) : fullKey;
-  if (short.length <= maxLen) return short;
+  if (dashIdx >= 0) {
+    const beaconPortion = fullKey.slice(dashIdx + 1);
+    if (beaconNames && beaconNames[beaconPortion]) {
+      return beaconNames[beaconPortion];
+    }
+    // Fall back to truncation logic
+    if (beaconPortion.length <= maxLen) return beaconPortion;
+    const keep = Math.floor((maxLen - 1) / 2);
+    return beaconPortion.slice(0, keep) + '…' + beaconPortion.slice(-keep);
+  }
+  // No dash — binary sensor or other key, show full label
+  if (fullKey.length <= maxLen) return fullKey;
   const keep = Math.floor((maxLen - 1) / 2);
-  return short.slice(0, keep) + '…' + short.slice(-keep);
+  return fullKey.slice(0, keep) + '…' + fullKey.slice(-keep);
+}
+
+/**
+ * Determine whether a tooltip should be shown for a bar label.
+ * Tooltips are shown only when a friendly name is displayed (req 4.3, 4.4).
+ */
+function shouldShowTooltip(fullKey, beaconNames) {
+  const dashIdx = fullKey.indexOf('-');
+  if (dashIdx >= 0) {
+    const beaconPortion = fullKey.slice(dashIdx + 1);
+    return !!(beaconNames && beaconNames[beaconPortion]);
+  }
+  return false;
 }
 
 /**
@@ -28,7 +54,7 @@ function displayLabel(fullKey, maxLen = 30) {
  * @param {string} [props.title]
  * @param {string} [props.overlayLabel] - Legend label for the overlay line
  */
-const SignalChart = ({ bars, title, overlayLabel }) => {
+const SignalChart = ({ bars, title, overlayLabel, beaconNames }) => {
   // Min-max normalize all values to 0–100%
   const { min, max } = useMemo(() => {
     if (!bars || bars.length === 0) return { min: 0, max: 1 };
@@ -77,8 +103,8 @@ const SignalChart = ({ bars, title, overlayLabel }) => {
           const outOfReach = bar.value == null;
           return (
             <div key={bar.label} className={`${styles.row} ${outOfReach ? styles.rowInactive : ''}`}>
-              <span className={styles.label} title={bar.label}>
-                {displayLabel(bar.label)}
+              <span className={styles.label} title={shouldShowTooltip(bar.label, beaconNames) ? bar.label : undefined}>
+                {displayLabel(bar.label, beaconNames)}
               </span>
               <div className={styles.track}>
                 <div

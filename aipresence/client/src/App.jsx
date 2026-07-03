@@ -9,13 +9,14 @@ import SensorTable from './components/SensorTable'
 import SensorEditModal from './components/SensorEditModal'
 import RoomTable from './components/RoomTable'
 import RoomEditModal from './components/RoomEditModal'
+import BeaconTable from './components/BeaconTable'
 import {Backend} from './Backend'
 import ErrorBoundary from './components/ErrorBoundary'
 import { useToast } from './components/ToastContext'
 import styles from './components/App.module.css'
 import spinnerStyles from './components/LoadingSpinner.module.css'
 
-const TABS = ['Devices', 'Monitors', 'Sensors', 'Rooms'];
+const TABS = ['Devices', 'Monitors', 'Beacons', 'Sensors', 'Rooms'];
 
 function getElementFromId(list, field, id){
     for (let i = 0; i < list.length; i++){
@@ -184,6 +185,12 @@ function App() {
                         <button className={styles.addButton} onClick={() => {
                             setMonitorEditModal(true)
                         }}>Add Monitor</button>
+                    </ErrorBoundary>
+                );
+            case 'Beacons':
+                return (
+                    <ErrorBoundary>
+                        <BeaconTable />
                     </ErrorBoundary>
                 );
             case 'Sensors':

@@ -6,7 +6,7 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..classes import Device, Model
-from ..dependencies import get_data_gatherer, get_devices, get_repository, get_rooms, get_settings
+from ..dependencies import get_beacon_names, get_data_gatherer, get_devices, get_repository, get_rooms, get_settings
 from ..schemas import (
     DeviceCreate,
     DeviceResponse,
@@ -88,6 +88,7 @@ def list_devices(devices: dict = Depends(get_devices)):
 def create_device(
     body: DeviceCreate,
     devices: dict = Depends(get_devices),
+    beacon_names: dict = Depends(get_beacon_names),
     make_data_gatherer=Depends(get_data_gatherer),
     repo=Depends(get_repository),
 ):
@@ -100,7 +101,23 @@ def create_device(
         data_gatherer=gatherer,
     )
     repo.save_device(device_id, body.name, body.entity_id, body.beacon_id)
-    return {"id": device_id}
+
+    response = {"id": device_id}
+
+    # Auto-naming: if device has a beacon_id, manage friendly name
+    if body.beacon_id:
+        existing_name = beacon_names.get(body.beacon_id)
+        if existing_name is None:
+            # Auto-create friendly name from device name
+            friendly = body.name.strip()
+            if friendly:
+                beacon_names[body.beacon_id] = friendly
+                repo.save_beacon_name(body.beacon_id, friendly)
+        else:
+            # Inform the frontend about the existing name
+            response["existing_beacon_name"] = existing_name
+
+    return response
 
 
 # Static path "/location" must be declared before the parameterised
@@ -125,6 +142,7 @@ def update_device(
     device_id: str,
     body: DeviceCreate,
     devices: dict = Depends(get_devices),
+    beacon_names: dict = Depends(get_beacon_names),
     make_data_gatherer=Depends(get_data_gatherer),
     repo=Depends(get_repository),
 ):
@@ -141,7 +159,23 @@ def update_device(
         data_gatherer=gatherer,
     )
     repo.save_device(device_id, body.name, body.entity_id, body.beacon_id)
-    return {"detail": "Success"}
+
+    response = {"detail": "Success"}
+
+    # Auto-naming: if device has a beacon_id, manage friendly name
+    if body.beacon_id:
+        existing_name = beacon_names.get(body.beacon_id)
+        if existing_name is None:
+            # Auto-create friendly name from device name
+            friendly = body.name.strip()
+            if friendly:
+                beacon_names[body.beacon_id] = friendly
+                repo.save_beacon_name(body.beacon_id, friendly)
+        else:
+            # Inform the frontend about the existing name
+            response["existing_beacon_name"] = existing_name
+
+    return response
 
 
 @router.delete("/{device_id}")
